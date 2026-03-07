@@ -103,9 +103,9 @@ function TentangPage() {
                     </div>
                     <div style={s.teamGrid}>
                         {[
-                            { name: "Yogi", role: "Backend Developer & AI Engineer", desc: "Mengembangkan API backend dan melatih model CNN untuk deteksi penyakit tanaman.", photo: "/dev-yogi.png" },
-                            { name: "Roy", role: "Frontend Developer", desc: "Merancang dan membangun antarmuka web yang responsif dan mudah digunakan.", photo: "/dev-roy.png" },
-                            { name: "Farisky", role: "Mobile Developer", desc: "Mengembangkan aplikasi mobile agar AgroScan dapat diakses dari perangkat seluler.", photo: "/dev-farisky.png" },
+                            { name: "Yogi", role: "Backend Developer & AI Engineer", desc: "Mengembangkan API backend dan melatih model CNN untuk deteksi penyakit tanaman.", photo: "/dev-yogi.jpg" },
+                            { name: "Roy", role: "Frontend Developer", desc: "Merancang dan membangun antarmuka web yang responsif dan mudah digunakan.", photo: "/dev-roy.jpg" },
+                            { name: "Farisky", role: "Mobile Developer", desc: "Mengembangkan aplikasi mobile agar AgroScan dapat diakses dari perangkat seluler.", photo: "/dev-farisky.jpg" },
                         ].map((dev) => (
                             <div key={dev.name} style={s.teamCard}>
                                 <img src={dev.photo} alt={dev.name} style={s.teamPhoto} />
@@ -178,9 +178,8 @@ const s = {
         borderRadius: "12px", padding: "28px 20px", textAlign: "center",
     },
     teamPhoto: {
-        width: "80px", height: "80px", borderRadius: "50%",
-        objectFit: "cover", marginBottom: "14px",
-        border: "3px solid #f0f0f0",
+        width: "100%", maxWidth: "180px", height: "auto", borderRadius: "8px",
+        objectFit: "contain", marginBottom: "14px",
     },
     teamName: { fontSize: "16px", fontWeight: "700", color: "#111", marginBottom: "4px" },
     teamRole: { fontSize: "13px", fontWeight: "600", color: "#16a34a", marginBottom: "10px" },

@@ -130,7 +130,7 @@ function HomePage() {
 const hero = {
     section: {
         position: "relative", minHeight: "100vh",
-        backgroundImage: "url('/hero-bg.png')",
+        backgroundImage: "url('/hero-bg.jpg')",
         backgroundSize: "cover", backgroundPosition: "center",
         display: "flex", alignItems: "center", justifyContent: "center",
     },
