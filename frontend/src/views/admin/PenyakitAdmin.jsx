@@ -39,7 +39,7 @@ function PenyakitAdmin() {
                 </div>
             )}
 
-            <div style={pg.tableWrap}>
+            <div className="admin-table-wrap" style={pg.tableWrap}>
                 <table style={pg.table}>
                     <thead><tr>{["ID", "Nama Penyakit", "Deskripsi", "Aksi"].map(h => <th key={h} style={pg.th}>{h}</th>)}</tr></thead>
                     <tbody>

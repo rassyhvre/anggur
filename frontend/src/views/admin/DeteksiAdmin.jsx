@@ -15,7 +15,7 @@ function DeteksiAdmin() {
     return (
         <div style={pg.page}>
             <h2 style={pg.title}>Kelola Hasil Deteksi</h2>
-            <div style={pg.tableWrap}>
+            <div className="admin-table-wrap" style={pg.tableWrap}>
                 <table style={pg.table}>
                     <thead>
                         <tr>{["ID", "Gambar", "Penyakit", "Keyakinan", "Pengguna", "Tanggal", "Aksi"].map(h => <th key={h} style={pg.th}>{h}</th>)}</tr>

@@ -30,10 +30,10 @@ function HomePage() {
                             </span>
                         </div>
                     </div>
-                    <h1 style={hero.title}>
+                    <h1 className="hero-title" style={hero.title}>
                         Scan Daun Anggur<br />untuk Mendeteksi<br />Penyakit Tanaman
                     </h1>
-                    <p style={hero.desc}>
+                    <p className="hero-desc" style={hero.desc}>
                         Identifikasi penyakit tanaman anggur secara instan dari<br />foto daun.
                     </p>
                     <div style={hero.actions}>
@@ -57,7 +57,7 @@ function HomePage() {
                     <h2 style={how.heading}>Tiga langkah sederhana</h2>
                     <p style={how.sub}>Tidak perlu keahlian khusus. Siapapun bisa menggunakannya.</p>
 
-                    <div style={how.grid}>
+                    <div className="how-grid" style={how.grid}>
                         {[
                             { step: "1", title: "Foto daun tanaman", desc: "Ambil foto daun yang tampak tidak sehat menggunakan kamera atau upload dari galeri." },
                             { step: "2", title: "Analisis otomatis", desc: "Model deep learning kami menganalisis gambar dan mengidentifikasi jenis penyakit." },
@@ -75,7 +75,7 @@ function HomePage() {
 
             {/* Features */}
             <section style={feat.section}>
-                <div style={feat.container}>
+                <div className="feat-container" style={feat.container}>
                     <div>
                         <span style={feat.label}>KEUNGGULAN</span>
                         <h2 style={feat.heading}>Solusi cerdas untuk kesehatan tanaman</h2>
@@ -114,7 +114,7 @@ function HomePage() {
 
             {/* Footer */}
             <footer style={ft.footer}>
-                <div style={ft.inner}>
+                <div className="footer-inner" style={ft.inner}>
                     <p style={ft.copy}>© 2026 AgroScan</p>
                     <div style={ft.links}>
                         <span style={ft.link} onClick={() => navigate("/tentang")}>Tentang</span>

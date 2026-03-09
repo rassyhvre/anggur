@@ -54,7 +54,7 @@ function PenangananAdmin() {
                 </div>
             )}
 
-            <div style={pg.tableWrap}>
+            <div className="admin-table-wrap" style={pg.tableWrap}>
                 <table style={pg.table}>
                     <thead><tr>{["ID", "Penyakit", "Judul", "Deskripsi", "Aksi"].map(h => <th key={h} style={pg.th}>{h}</th>)}</tr></thead>
                     <tbody>
