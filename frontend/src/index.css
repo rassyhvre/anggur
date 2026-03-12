@@ -48,3 +48,152 @@ a {
   background: #dcfce7;
   color: #166534;
 }
+
+/* ===== RESPONSIVE MOBILE ===== */
+
+/* Navbar mobile */
+@media (max-width: 768px) {
+  .navbar-links {
+    display: none !important;
+  }
+  .navbar-links.open {
+    display: flex !important;
+    flex-direction: column;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 8px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    z-index: 99;
+  }
+  .navbar-links.open a {
+    padding: 12px 24px !important;
+    border-bottom: none !important;
+  }
+  .navbar-auth {
+    display: none !important;
+  }
+  .navbar-auth.open {
+    display: flex !important;
+    flex-direction: column;
+    position: absolute;
+    top: auto;
+    left: 0;
+    right: 0;
+    background: #fff;
+    padding: 8px 24px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    z-index: 99;
+  }
+  .hamburger-btn {
+    display: flex !important;
+  }
+
+  /* Admin Navbar mobile */
+  .admin-links {
+    display: none !important;
+  }
+  .admin-links.open {
+    display: flex !important;
+    flex-direction: column;
+    position: absolute;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    padding: 8px 12px;
+    gap: 4px;
+    z-index: 99;
+  }
+  .admin-auth {
+    display: none !important;
+  }
+  .admin-auth.open {
+    display: flex !important;
+    position: absolute;
+    top: auto;
+    left: 0;
+    right: 0;
+    background: #1e293b;
+    padding: 8px 12px 12px;
+    border-bottom: 1px solid #334155;
+    gap: 8px;
+    z-index: 99;
+  }
+  .admin-hamburger {
+    display: flex !important;
+  }
+
+  /* HomePage Hero */
+  .hero-title {
+    font-size: 28px !important;
+  }
+  .hero-desc br {
+    display: none;
+  }
+
+  /* HomePage grids */
+  .how-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .feat-container {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+  .footer-inner {
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center;
+  }
+
+  /* ScanPage grid */
+  .scan-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* TentangPage grids */
+  .tentang-twocol {
+    grid-template-columns: 1fr !important;
+  }
+  .tentang-techgrid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .tentang-stepsgrid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .tentang-teamgrid {
+    grid-template-columns: 1fr !important;
+  }
+  .tentang-hero-title {
+    font-size: 26px !important;
+  }
+
+  /* Admin tables scroll */
+  .admin-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .admin-table-wrap table {
+    min-width: 600px;
+  }
+
+  /* Admin dashboard grid */
+  .admin-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .tentang-techgrid {
+    grid-template-columns: 1fr !important;
+  }
+  .tentang-stepsgrid {
+    grid-template-columns: 1fr !important;
+  }
+}

@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 function Navbar() {
     const navigate = useNavigate();
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user") || "null");
+    const [menuOpen, setMenuOpen] = useState(false);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -11,13 +13,15 @@ function Navbar() {
         navigate("/login");
     };
 
+    const closeMenu = () => setMenuOpen(false);
+
     return (
         <nav style={s.nav}>
             <div style={s.inner}>
-                <div style={s.brand} onClick={() => navigate("/")}>
-                    <img 
-                        src="/logo.png" 
-                        alt="AgroScan Logo" 
+                <div style={s.brand} onClick={() => { navigate("/"); closeMenu(); }}>
+                    <img
+                        src="/logo.png"
+                        alt="AgroScan Logo"
                         style={{ height: "36px", width: "auto", objectFit: "contain" }}
                         onError={(e) => {
                             e.target.style.display = 'none';
@@ -34,7 +38,28 @@ function Navbar() {
                     </span>
                 </div>
 
-                <div style={s.links}>
+                <button
+                    className="hamburger-btn"
+                    style={s.hamburger}
+                    onClick={() => setMenuOpen(!menuOpen)}
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round">
+                        {menuOpen ? (
+                            <>
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </>
+                        ) : (
+                            <>
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                                <line x1="3" y1="12" x2="21" y2="12" />
+                                <line x1="3" y1="18" x2="21" y2="18" />
+                            </>
+                        )}
+                    </svg>
+                </button>
+
+                <div className={`navbar-links${menuOpen ? " open" : ""}`} style={s.links}>
                     {[
                         { to: "/", label: "Beranda" },
                         { to: "/scan", label: "Scan" },
@@ -45,6 +70,7 @@ function Navbar() {
                             key={item.to}
                             to={item.to}
                             end={item.to === "/"}
+                            onClick={closeMenu}
                             style={({ isActive }) => ({
                                 ...s.link,
                                 color: isActive ? "#16a34a" : "#555",
@@ -57,19 +83,19 @@ function Navbar() {
                     ))}
                 </div>
 
-                <div style={s.auth}>
+                <div className={`navbar-auth${menuOpen ? " open" : ""}`} style={s.auth}>
                     {token && user ? (
                         <div style={s.userArea}>
                             {user.role === "admin" && (
-                                <button onClick={() => navigate("/admin")} style={s.adminBtn}>Admin</button>
+                                <button onClick={() => { navigate("/admin"); closeMenu(); }} style={s.adminBtn}>Admin</button>
                             )}
                             <div style={s.avatar}>{user.nama?.charAt(0).toUpperCase()}</div>
-                            <button onClick={handleLogout} style={s.logoutBtn}>Keluar</button>
+                            <button onClick={() => { handleLogout(); closeMenu(); }} style={s.logoutBtn}>Keluar</button>
                         </div>
                     ) : (
                         <div style={s.authBtns}>
-                            <button onClick={() => navigate("/login")} style={s.loginBtn}>Masuk</button>
-                            <button onClick={() => navigate("/register")} style={s.registerBtn}>Daftar</button>
+                            <button onClick={() => { navigate("/login"); closeMenu(); }} style={s.loginBtn}>Masuk</button>
+                            <button onClick={() => { navigate("/register"); closeMenu(); }} style={s.registerBtn}>Daftar</button>
                         </div>
                     )}
                 </div>
@@ -106,6 +132,15 @@ const s = {
         fontSize: "18px",
         fontWeight: "700",
         color: "#111",
+    },
+    hamburger: {
+        display: "none",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        padding: "4px",
     },
     links: {
         display: "flex",

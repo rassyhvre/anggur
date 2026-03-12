@@ -67,7 +67,7 @@ function ScanPage() {
             </section>
 
             {/* Main Content */}
-            <div style={p.mainGrid}>
+            <div className="scan-grid" style={p.mainGrid}>
                 {/* Left: Scan Area */}
                 <div style={p.scanCol}>
                     <div style={p.scanCard}>

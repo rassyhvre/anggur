@@ -30,10 +30,10 @@ function HomePage() {
                             </span>
                         </div>
                     </div>
-                    <h1 style={hero.title}>
+                    <h1 className="hero-title" style={hero.title}>
                         Scan Daun Anggur<br />untuk Mendeteksi<br />Penyakit Tanaman
                     </h1>
-                    <p style={hero.desc}>
+                    <p className="hero-desc" style={hero.desc}>
                         Identifikasi penyakit tanaman anggur secara instan dari<br />foto daun.
                     </p>
                     <div style={hero.actions}>
@@ -57,7 +57,7 @@ function HomePage() {
                     <h2 style={how.heading}>Tiga langkah sederhana</h2>
                     <p style={how.sub}>Tidak perlu keahlian khusus. Siapapun bisa menggunakannya.</p>
 
-                    <div style={how.grid}>
+                    <div className="how-grid" style={how.grid}>
                         {[
                             { step: "1", title: "Foto daun tanaman", desc: "Ambil foto daun yang tampak tidak sehat menggunakan kamera atau upload dari galeri." },
                             { step: "2", title: "Analisis otomatis", desc: "Model deep learning kami menganalisis gambar dan mengidentifikasi jenis penyakit secara akurat." },
@@ -75,7 +75,7 @@ function HomePage() {
 
             {/* Features */}
             <section style={feat.section}>
-                <div style={feat.container}>
+                <div className="feat-container" style={feat.container}>
                     <div>
                         <span style={feat.label}>KEUNGGULAN</span>
                         <h2 style={feat.heading}>Solusi cerdas untuk kesehatan tanaman</h2>
@@ -134,15 +134,7 @@ function HomePage() {
             {/* Footer */}
             <footer style={ft.footer}>
                 <div style={ft.inner}>
-                    <div style={ft.logo}>
-                        <img src="/logo.png" alt="AgroScan Logo" style={{ height: "32px", width: "auto", objectFit: "contain" }} onError={(e) => { e.target.style.display = 'none'; }} />
-                        <div>
-                            <span style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "-0.5px", lineHeight: "1" }}>
-                                <span style={{ color: "#2ea043" }}>Agro</span><span style={{ color: "#7e22ce" }}>Scan</span>
-                            </span>
-                        </div>
-                    </div>
-                    <p style={ft.copy}>© 2026 AgroScan. Hak Cipta Dilindungi.</p>
+                    <p style={ft.copy}>© 2026 AgroScan</p>
                     <div style={ft.links}>
                         <span style={ft.link} onClick={() => navigate("/tentang")}>Tentang</span>
                         <span style={ft.link} onClick={() => navigate("/scan")}>Scan Daun</span>
