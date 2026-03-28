@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 function AdminNavbar() {
     const navigate = useNavigate();
+    const [menuOpen, setMenuOpen] = useState(false);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -9,14 +11,38 @@ function AdminNavbar() {
         navigate("/login");
     };
 
+    const closeMenu = () => setMenuOpen(false);
+
     return (
         <nav style={s.nav}>
             <div style={s.inner}>
-                <div style={s.brand} onClick={() => navigate("/admin")}>
+                <div style={s.brand} onClick={() => { navigate("/admin"); closeMenu(); }}>
                     <span style={{ fontSize: "20px" }}>🛡️</span>
                     <span style={s.brandText}>Admin Panel</span>
                 </div>
-                <div style={s.links}>
+
+                <button
+                    className="admin-hamburger"
+                    style={s.hamburger}
+                    onClick={() => setMenuOpen(!menuOpen)}
+                >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round">
+                        {menuOpen ? (
+                            <>
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </>
+                        ) : (
+                            <>
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                                <line x1="3" y1="12" x2="21" y2="12" />
+                                <line x1="3" y1="18" x2="21" y2="18" />
+                            </>
+                        )}
+                    </svg>
+                </button>
+
+                <div className={`admin-links${menuOpen ? " open" : ""}`} style={s.links}>
                     {[
                         { to: "/admin", label: "Dashboard", end: true },
                         { to: "/admin/pengguna", label: "Pengguna" },
@@ -28,6 +54,7 @@ function AdminNavbar() {
                             key={item.to}
                             to={item.to}
                             end={item.end}
+                            onClick={closeMenu}
                             style={({ isActive }) => ({
                                 ...s.link,
                                 ...(isActive ? s.linkActive : {}),
@@ -37,9 +64,9 @@ function AdminNavbar() {
                         </NavLink>
                     ))}
                 </div>
-                <div style={s.authArea}>
-                    <button onClick={() => navigate("/")} style={s.homeBtn}>🌐 Site</button>
-                    <button onClick={handleLogout} style={s.logoutBtn}>Logout</button>
+                <div className={`admin-auth${menuOpen ? " open" : ""}`} style={s.authArea}>
+                    <button onClick={() => { navigate("/"); closeMenu(); }} style={s.homeBtn}>🌐 Site</button>
+                    <button onClick={() => { handleLogout(); closeMenu(); }} style={s.logoutBtn}>Logout</button>
                 </div>
             </div>
         </nav>
@@ -58,6 +85,10 @@ const s = {
     },
     brand: { display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" },
     brandText: { fontSize: "16px", fontWeight: "800", color: "#f1f5f9" },
+    hamburger: {
+        display: "none", alignItems: "center", justifyContent: "center",
+        background: "none", border: "none", cursor: "pointer", padding: "4px",
+    },
     links: { display: "flex", gap: "2px" },
     link: {
         color: "#94a3b8", textDecoration: "none", fontSize: "13px", fontWeight: "600",

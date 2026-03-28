@@ -4,7 +4,7 @@ function TentangPage() {
             {/* Header */}
             <section style={s.hero}>
                 <span style={s.label}>TENTANG KAMI</span>
-                <h1 style={s.heroTitle}>
+                <h1 className="tentang-hero-title" style={s.heroTitle}>
                     Teknologi AI untuk<br />Pertanian yang Lebih Baik
                 </h1>
                 <p style={s.heroDesc}>
@@ -16,7 +16,7 @@ function TentangPage() {
             {/* Mission */}
             <section style={s.section}>
                 <div style={s.container}>
-                    <div style={s.twoCol}>
+                    <div className="tentang-twocol" style={s.twoCol}>
                         <div>
                             <span style={s.labelSmall}>MISI KAMI</span>
                             <h2 style={s.heading}>Memberdayakan petani dengan teknologi</h2>
@@ -54,7 +54,7 @@ function TentangPage() {
                         <span style={s.labelSmall}>TEKNOLOGI</span>
                         <h2 style={s.heading}>Dibangun dengan stack modern</h2>
                     </div>
-                    <div style={s.techGrid}>
+                    <div className="tentang-techgrid" style={s.techGrid}>
                         {[
                             { name: "React", desc: "Frontend" },
                             { name: "Express.js", desc: "Backend API" },
@@ -77,7 +77,7 @@ function TentangPage() {
                         <span style={s.labelSmall}>PANDUAN</span>
                         <h2 style={s.heading}>Cara menggunakan</h2>
                     </div>
-                    <div style={s.stepsGrid}>
+                    <div className="tentang-stepsgrid" style={s.stepsGrid}>
                         {[
                             { num: "1", title: "Buka halaman Scan", desc: "Klik menu Scan di navigasi" },
                             { num: "2", title: "Upload atau foto daun", desc: "Pilih gambar dari galeri atau kamera" },
@@ -101,7 +101,7 @@ function TentangPage() {
                         <span style={s.labelSmall}>TIM PENGEMBANG</span>
                         <h2 style={s.heading}>Orang-orang di balik AgroScan</h2>
                     </div>
-                    <div style={s.teamGrid}>
+                    <div className="tentang-teamgrid" style={s.teamGrid}>
                         {[
                             { name: "Yogi", role: "Backend Developer & AI Engineer", desc: "Mengembangkan API backend dan melatih model CNN untuk deteksi penyakit tanaman.", photo: "/dev-yogi.jpg" },
                             { name: "Roy", role: "Frontend Developer", desc: "Merancang dan membangun antarmuka web yang responsif dan mudah digunakan.", photo: "/dev-roy.jpg" },

@@ -27,7 +27,7 @@ function AdminDashboard() {
         <div style={s.page}>
             <h1 style={s.title}>Dashboard Admin</h1>
             <p style={s.subtitle}>Selamat datang di panel administrasi AgroScan</p>
-            <div style={s.grid}>
+            <div className="admin-grid" style={s.grid}>
                 {cards.map((c) => (
                     <div key={c.label} style={s.card}>
                         <div style={{ ...s.iconWrap, background: c.color + "20", color: c.color }}>{c.icon}</div>
