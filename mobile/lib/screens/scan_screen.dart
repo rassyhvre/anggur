@@ -266,13 +266,23 @@ class _ScanScreenState extends State<ScanScreen> {
     });
 
     try {
-      final result = await ApiService.predict(_selectedImage!);
+      final result = await ApiService.predict(_selectedImage!).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => {
+          'statusCode': 504,
+          'data': {'message': 'Timeout: Server tidak merespons. Pastikan backend dan AI server running.'}
+        },
+      );
 
       if (!mounted) return;
 
       if (result['statusCode'] != 200) {
+        final errorMsg = result['data']['message'] ?? 'Prediksi gagal';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${result['data']['message'] ?? 'Prediksi gagal'}')),
+          SnackBar(
+            content: Text('Error: $errorMsg'),
+            duration: const Duration(seconds: 5),
+          ),
         );
         setState(() {
           _isLoading = false;
@@ -318,10 +328,21 @@ class _ScanScreenState extends State<ScanScreen> {
       setState(() {
         _selectedImage = null;
       });
+    } on SocketException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Network Error: $e\nPastikan device terhubung ke jaringan yang sama dengan server.'),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text('Error: $e'),
+          duration: const Duration(seconds: 5),
+        ),
       );
     } finally {
       if (mounted) {
