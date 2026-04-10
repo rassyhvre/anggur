@@ -92,7 +92,17 @@ const deteksiAI = async (req, res) => {
         // 1. Kirim gambar ke AI server
         const aiResult = await aiService.predictImage(imagePath);
 
-        // 2. Cari id_penyakit berdasarkan nama dari AI
+        // 2. Cek apakah gambar adalah daun anggur (filter model)
+        if (aiResult.is_grape_leaf === false) {
+            return res.status(400).json({
+                success: false,
+                is_grape_leaf: false,
+                filter_confidence: aiResult.filter_confidence,
+                message: aiResult.message || "Gambar yang diunggah bukan daun anggur. Silakan unggah foto daun anggur untuk deteksi penyakit.",
+            });
+        }
+
+        // 3. Cari id_penyakit berdasarkan nama dari AI
         const penyakit = await getPenyakitByNama(aiResult.penyakit);
 
         if (!penyakit) {
@@ -102,7 +112,7 @@ const deteksiAI = async (req, res) => {
             });
         }
 
-        // 3. Simpan hasil deteksi ke database
+        // 4. Simpan hasil deteksi ke database
         const id_deteksi = await createHasilDeteksi({
             id_pengguna: req.user.id,
             id_penyakit: penyakit.id_penyakit,
@@ -110,10 +120,10 @@ const deteksiAI = async (req, res) => {
             tingkat_keyakinan: aiResult.confidence,
         });
 
-        // 4. Ambil daftar penanganan berdasarkan id_penyakit
+        // 5. Ambil daftar penanganan berdasarkan id_penyakit
         const penanganan = await getPenangananByPenyakitId(penyakit.id_penyakit);
 
-        // 5. Return response lengkap
+        // 6. Return response lengkap
         res.status(201).json({
             success: true,
             message: "Deteksi berhasil",
