@@ -4,8 +4,6 @@ import '../providers/deteksi_provider.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
-import '../providers/auth_provider.dart';
-import 'auth/login_page.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -15,67 +13,16 @@ class RiwayatScreen extends StatefulWidget {
 }
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
-  int? _lastLoadedUserId;
-
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DeteksiProvider>().loadDeteksiResults();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-
-    if (!authProvider.isLoggedIn) {
-      _lastLoadedUserId = null;
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Akses Dibatasi',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Silakan login untuk melihat riwayat',
-              style: TextStyle(fontSize: 14, color: Colors.grey[400]),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                );
-              },
-              icon: const Icon(Icons.login),
-              label: const Text('Login Sekarang'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF16A34A),
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_lastLoadedUserId != authProvider.user!.idPengguna) {
-      _lastLoadedUserId = authProvider.user!.idPengguna;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          context.read<DeteksiProvider>().loadDeteksiResults(_lastLoadedUserId!);
-        }
-      });
-    }
-
     return Consumer<DeteksiProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
@@ -250,7 +197,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     child: SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: () => _deleteDeteksi(context, result.id!, authProvider.user!.idPengguna),
+                        onPressed: () => _deleteDeteksi(context, result.id!),
                         icon: const Icon(Icons.delete),
                         label: const Text('Hapus'),
                         style: OutlinedButton.styleFrom(
@@ -270,7 +217,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  void _deleteDeteksi(BuildContext context, int id, int idPengguna) {
+  void _deleteDeteksi(BuildContext context, int id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -283,7 +230,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.read<DeteksiProvider>().deleteDeteksiResult(id, idPengguna);
+              context.read<DeteksiProvider>().deleteDeteksiResult(id);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

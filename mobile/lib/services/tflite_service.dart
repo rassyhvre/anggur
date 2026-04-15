@@ -67,18 +67,18 @@ class TfliteService {
       // ==========================================
       // Step 1: Filter Model (model_grape — BARU)
       // Preprocessing: Normalized [0-1]
-      // Sigmoid: output mendekati 1 = daun anggur, mendekati 0 = bukan daun anggur
+      // Sigmoid: output mendekati 0 = daun anggur, mendekati 1 = BUKAN daun anggur
       // ==========================================
       var filterInput = _imageToByteListFloat32Normalized(resizedImage, 224, 3);
       var filterOutput = List.generate(1, (i) => List.filled(1, 0.0));
       _filterInterpreter!.run(filterInput, filterOutput);
 
-      // Bypass model_grape.tflite karena model tersebut bermasalah (mereturn nilai sama untuk semua gambar)
-      // Untuk sementara, kita loloskan semua gambar agar fungsi deteksi penyakit berjalan lancar.
-      bool isGrapeLeaf = true;
-      double grapeLeafConfidence = 1.0;
+      // Output mendekati 0 = daun anggur, mendekati 1 = bukan
+      // Dibalik: grape_leaf_confidence = 1 - output
+      double grapeLeafConfidence = 1.0 - filterOutput[0][0];
+      bool isGrapeLeaf = grapeLeafConfidence >= FILTER_THRESHOLD;
 
-      print('[FILTER BYPASSED] Semua gambar dianulir sebagai daun anggur.');
+      print('[FILTER] raw: ${filterOutput[0][0]}, confidence: $grapeLeafConfidence, isGrapeLeaf: $isGrapeLeaf');
 
       if (!isGrapeLeaf) {
         return {

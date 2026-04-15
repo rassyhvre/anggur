@@ -11,13 +11,13 @@ class DeteksiProvider extends ChangeNotifier {
   List<DeteksiResult> get deteksiResults => _deteksiResults;
   bool get isLoading => _isLoading;
 
-  Future<void> loadDeteksiResults(int idPengguna) async {
+  Future<void> loadDeteksiResults() async {
     if (kIsWeb) return;
     _isLoading = true;
     notifyListeners();
 
     try {
-      _deteksiResults = await _dbService.getAllDeteksiResults(idPengguna);
+      _deteksiResults = await _dbService.getAllDeteksiResults();
     } catch (e) {
       rethrow;
     }
@@ -26,33 +26,31 @@ class DeteksiProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addDeteksiResult(DeteksiResult result, int? idPengguna) async {
+  Future<void> addDeteksiResult(DeteksiResult result) async {
     if (kIsWeb) return;
     try {
       await _dbService.insertDeteksiResult(result);
-      if (idPengguna != null) {
-        await loadDeteksiResults(idPengguna);
-      }
+      await loadDeteksiResults();
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<void> deleteDeteksiResult(int id, int idPengguna) async {
+  Future<void> deleteDeteksiResult(int id) async {
     if (kIsWeb) return;
     try {
       await _dbService.deleteDeteksiResult(id);
-      await loadDeteksiResults(idPengguna);
+      await loadDeteksiResults();
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<void> clearAllDeteksiResults(int idPengguna) async {
+  Future<void> clearAllDeteksiResults() async {
     if (kIsWeb) return;
     try {
       await _dbService.deleteAllDeteksiResults();
-      await loadDeteksiResults(idPengguna);
+      await loadDeteksiResults();
     } catch (e) {
       rethrow;
     }

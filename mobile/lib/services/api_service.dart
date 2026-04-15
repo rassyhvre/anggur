@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http_parser/http_parser.dart';
 import '../config/constants.dart';
 
 class ApiService {
@@ -27,15 +26,15 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
     );
-    final responseData = jsonDecode(response.body);
+    final data = jsonDecode(response.body);
 
-    if (response.statusCode == 200 && responseData['data'] != null) {
+    if (response.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', responseData['data']['token']);
-      await prefs.setString('user', jsonEncode(responseData['data']));
+      await prefs.setString('token', data['token']);
+      await prefs.setString('user', jsonEncode(data));
     }
 
-    return {'statusCode': response.statusCode, 'data': responseData};
+    return {'statusCode': response.statusCode, 'data': data};
   }
 
   static Future<Map<String, dynamic>> register(
@@ -45,15 +44,15 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'nama': nama, 'email': email, 'password': password}),
     );
-    final responseData = jsonDecode(response.body);
+    final data = jsonDecode(response.body);
 
-    if (response.statusCode == 201 && responseData['data'] != null) {
+    if (response.statusCode == 201) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', responseData['data']['token']);
-      await prefs.setString('user', jsonEncode(responseData['data']));
+      await prefs.setString('token', data['token']);
+      await prefs.setString('user', jsonEncode(data));
     }
 
-    return {'statusCode': response.statusCode, 'data': responseData};
+    return {'statusCode': response.statusCode, 'data': data};
   }
 
   static Future<void> logout() async {
@@ -87,12 +86,7 @@ class ApiService {
 
     final bytes = await imageFile.readAsBytes();
     request.files.add(
-      http.MultipartFile.fromBytes(
-        'file', 
-        bytes, 
-        filename: imageFile.name,
-        contentType: MediaType('image', 'jpeg'),
-      ),
+      http.MultipartFile.fromBytes('file', bytes, filename: imageFile.name),
     );
 
     final streamedResponse = await request.send();

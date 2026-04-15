@@ -7,9 +7,6 @@ import '../providers/deteksi_provider.dart';
 import '../models/deteksi_result_model.dart';
 import '../services/api_service.dart';
 import '../services/tflite_service.dart';
-import '../providers/auth_provider.dart';
-import 'auth/login_page.dart';
-
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
 
@@ -239,15 +236,6 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> _scanFromCamera() async {
-    final authProvider = context.read<AuthProvider>();
-    if (!authProvider.isLoggedIn) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      );
-      return;
-    }
-
     try {
       final photo = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -267,15 +255,6 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> _scanFromGallery() async {
-    final authProvider = context.read<AuthProvider>();
-    if (!authProvider.isLoggedIn) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      );
-      return;
-    }
-
     try {
       final photo = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -302,17 +281,11 @@ class _ScanScreenState extends State<ScanScreen> {
     });
 
     try {
-      final result = await ApiService.predict(_selectedImage!).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => {
-          'statusCode': 504,
-          'data': {'message': 'Timeout: Server tidak merespons. Pastikan backend dan AI server running.'}
-        },
-      );
+      final result = await TfliteService.predict(_selectedImage!);
 
       if (!mounted) return;
 
-      if (result['statusCode'] != 200 && result['statusCode'] != 201) {
+      if (result['statusCode'] != 200) {
         final errorMsg = result['data']['message'] ?? 'Prediksi gagal';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -326,8 +299,7 @@ class _ScanScreenState extends State<ScanScreen> {
         return;
       }
 
-      final responseData = result['data'];
-      final prediction = responseData['data']; // Mengambil object data di dalam JSON API
+      final prediction = result['data'];
       final confidence = (prediction['confidence'] ?? 0.0).toDouble();
 
       if (confidence < minConfidence) {
@@ -341,11 +313,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
       final rekomendasi = _getRekomendasi(prediction['penyakit']);
 
-      final authProvider = context.read<AuthProvider>();
-      final int? idPengguna = authProvider.isLoggedIn ? authProvider.user!.idPengguna : null;
-
       final deteksiResult = DeteksiResult(
-        idPengguna: idPengguna,
         imagePath: _selectedImage!.path,
         namaGambar: _selectedImage!.path.split('/').last,
         resultPenyakit: prediction['penyakit'] ?? 'Tidak diketahui',
@@ -355,17 +323,20 @@ class _ScanScreenState extends State<ScanScreen> {
       );
 
       if (!mounted) return;
-      bool saved = false;
-
-      if (authProvider.isLoggedIn) {
-        final provider = context.read<DeteksiProvider>();
-        await provider.addDeteksiResult(deteksiResult, authProvider.user!.idPengguna);
-        saved = true;
-      }
+      final provider = context.read<DeteksiProvider>();
+      await provider.addDeteksiResult(deteksiResult);
 
       if (!mounted) return;
-      _showResultDialog(context, prediction, confidence, rekomendasi, saved);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hasil deteksi berhasil disimpan!'),
+          duration: Duration(seconds: 2),
+        ),
+      );
 
+      setState(() {
+        _selectedImage = null;
+      });
     } on SocketException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -460,43 +431,6 @@ class _ScanScreenState extends State<ScanScreen> {
               });
             },
             child: const Text('Batal', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showResultDialog(BuildContext context, dynamic prediction, double confidence, String rekomendasi, bool saved) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Hasil Deteksi'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Penyakit: ${prediction['penyakit'] ?? 'Tidak diketahui'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 8),
-            Text('Akurasi: ${(confidence * 100).toStringAsFixed(1)}%'),
-            const SizedBox(height: 8),
-            Text('Rekomendasi:\n$rekomendasi'),
-            const SizedBox(height: 16),
-            if (saved)
-              const Text('✅ Berhasil disimpan di Riwayat', style: TextStyle(color: Colors.green))
-            else
-              const Text('⚠️ Tidak disimpan. Login untuk menyimpan riwayat.', style: TextStyle(color: Colors.orange)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _selectedImage = null;
-              });
-            },
-            child: const Text('Tutup'),
           ),
         ],
       ),

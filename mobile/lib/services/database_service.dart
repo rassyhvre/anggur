@@ -23,9 +23,8 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 2,
+      version: 1,
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
     );
   }
 
@@ -33,7 +32,6 @@ class DatabaseService {
     await db.execute('''
       CREATE TABLE deteksi_results (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_pengguna INTEGER,
         imagePath TEXT NOT NULL,
         namaGambar TEXT,
         resultPenyakit TEXT,
@@ -44,23 +42,15 @@ class DatabaseService {
     ''');
   }
 
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute('ALTER TABLE deteksi_results ADD COLUMN id_pengguna INTEGER');
-    }
-  }
-
   Future<int> insertDeteksiResult(DeteksiResult result) async {
     final db = await database;
     return db.insert('deteksi_results', result.toMap());
   }
 
-  Future<List<DeteksiResult>> getAllDeteksiResults(int idPengguna) async {
+  Future<List<DeteksiResult>> getAllDeteksiResults() async {
     final db = await database;
     final results = await db.query(
       'deteksi_results',
-      where: 'id_pengguna = ?',
-      whereArgs: [idPengguna],
       orderBy: 'waktu DESC',
     );
     return results.map((map) => DeteksiResult.fromMap(map)).toList();
