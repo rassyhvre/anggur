@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/deteksi_provider.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
+import '../providers/auth_provider.dart';
+import 'auth/login_page.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -12,22 +15,71 @@ class RiwayatScreen extends StatefulWidget {
 }
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
+  int? _lastLoadedUserId;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DeteksiProvider>().loadDeteksiResults();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+
+    if (!authProvider.isLoggedIn) {
+      _lastLoadedUserId = null;
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Akses Dibatasi',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Silakan login untuk melihat riwayat',
+              style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                );
+              },
+              icon: const Icon(Icons.login),
+              label: const Text('Login Sekarang'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF16A34A),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_lastLoadedUserId != authProvider.user!.idPengguna) {
+      _lastLoadedUserId = authProvider.user!.idPengguna;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.read<DeteksiProvider>().loadDeteksiResults(_lastLoadedUserId!);
+        }
+      });
+    }
+
     return Consumer<DeteksiProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (provider.deteksiResults.isEmpty) {
@@ -35,11 +87,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.history,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.history, size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
                   'Riwayat Deteksi',
@@ -52,10 +100,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Belum ada riwayat deteksi',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[400],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[400]),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
@@ -78,17 +123,39 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           itemCount: provider.deteksiResults.length,
           itemBuilder: (context, index) {
             final result = provider.deteksiResults[index];
-            final formattedDate =
-                DateFormat('dd MMM yyyy, HH:mm').format(result.waktu);
+            final formattedDate = DateFormat(
+              'dd MMM yyyy, HH:mm',
+            ).format(result.waktu);
 
             return Card(
               elevation: 2,
               margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (File(result.imagePath).existsSync())
+                  if (kIsWeb) ...[
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        height: 180,
+                        color: Colors.grey[300],
+                        child: Image.network(
+                          result.imagePath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.broken_image,
+                                  size: 50, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  ] else if (File(result.imagePath).existsSync()) ...[
                     ClipRRect(
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(12),
@@ -104,6 +171,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         ),
                       ),
                     ),
+                  ],
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -149,10 +217,10 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.08),
+                              color: Colors.orange.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: Colors.orange.withOpacity(0.3),
+                                color: Colors.orange.withValues(alpha: 0.3),
                               ),
                             ),
                             child: Column(
@@ -182,7 +250,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     child: SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: () => _deleteDeteksi(context, result.id!),
+                        onPressed: () => _deleteDeteksi(context, result.id!, authProvider.user!.idPengguna),
                         icon: const Icon(Icons.delete),
                         label: const Text('Hapus'),
                         style: OutlinedButton.styleFrom(
@@ -202,7 +270,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  void _deleteDeteksi(BuildContext context, int id) {
+  void _deleteDeteksi(BuildContext context, int id, int idPengguna) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -215,7 +283,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.read<DeteksiProvider>().deleteDeteksiResult(id);
+              context.read<DeteksiProvider>().deleteDeteksiResult(id, idPengguna);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

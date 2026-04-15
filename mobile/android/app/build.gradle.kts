@@ -8,7 +8,11 @@ plugins {
 android {
     namespace = "com.agroscan.agroscan"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.3.13750724"
+
+    aaptOptions {
+        noCompress("tflite")
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

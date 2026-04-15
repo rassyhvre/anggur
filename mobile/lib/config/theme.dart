@@ -26,7 +26,10 @@ class AppTheme {
       ),
       textTheme: GoogleFonts.poppinsTextTheme(
         const TextTheme(
-          displayLarge: TextStyle(fontWeight: FontWeight.w700, letterSpacing: -0.5),
+          displayLarge: TextStyle(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
           displayMedium: TextStyle(fontWeight: FontWeight.w600),
           displaySmall: TextStyle(fontWeight: FontWeight.w600),
           headlineMedium: TextStyle(fontWeight: FontWeight.w600),
@@ -36,7 +39,10 @@ class AppTheme {
           titleSmall: TextStyle(fontWeight: FontWeight.w500),
           bodyLarge: TextStyle(fontWeight: FontWeight.w500),
           bodyMedium: TextStyle(fontWeight: FontWeight.w400),
-          labelLarge: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.5),
+          labelLarge: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
         ),
       ),
       appBarTheme: AppBarTheme(
@@ -102,16 +108,20 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: errorRed),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-        labelStyle: const TextStyle(color: textDark, fontWeight: FontWeight.w500),
+        labelStyle: const TextStyle(
+          color: textDark,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        surfaceTintColor: primaryGreen.withOpacity(0.02),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        surfaceTintColor: primaryGreen.withValues(alpha: 0.02),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: Colors.white,
@@ -127,11 +137,9 @@ class AppTheme {
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         behavior: SnackBarBehavior.floating,
-      )
+      ),
     );
   }
 }

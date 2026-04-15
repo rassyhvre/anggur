@@ -1,5 +1,6 @@
 class DeteksiResult {
   final int? id;
+  final int? idPengguna;
   final String imagePath;
   final String? namaGambar;
   final String? resultPenyakit;
@@ -9,6 +10,7 @@ class DeteksiResult {
 
   DeteksiResult({
     this.id,
+    this.idPengguna,
     required this.imagePath,
     this.namaGambar,
     this.resultPenyakit,
@@ -19,6 +21,7 @@ class DeteksiResult {
 
   Map<String, dynamic> toMap() {
     return {
+      'id_pengguna': idPengguna,
       'imagePath': imagePath,
       'namaGambar': namaGambar,
       'resultPenyakit': resultPenyakit,
@@ -31,6 +34,7 @@ class DeteksiResult {
   factory DeteksiResult.fromMap(Map<String, dynamic> map) {
     return DeteksiResult(
       id: map['id'],
+      idPengguna: map['id_pengguna'],
       imagePath: map['imagePath'],
       namaGambar: map['namaGambar'],
       resultPenyakit: map['resultPenyakit'],

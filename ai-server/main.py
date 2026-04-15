@@ -1,22 +1,29 @@
 from fastapi import FastAPI, UploadFile, File
-from tensorflow import keras
+import tensorflow as tf
 from PIL import Image
 import numpy as np
 import io
 
 app = FastAPI()
 
-# ==================== MODEL FILTER DAUN ====================
-# Model binary classifier: kelas 0 = bukan_daun_anggur, kelas 1 = daun_anggur
-filter_model = keras.models.load_model("model/model_filter_daun.keras")
+# ==================== MODEL FILTER DAUN (TFLite) ====================
+# Model filter BARU (model_grape) — Sigmoid, 1 output
+# Output mendekati 0 = daun anggur, mendekati 1 = BUKAN daun anggur
+# Preprocessing: raw pixel [0-255], TANPA normalisasi
+filter_interpreter = tf.lite.Interpreter(model_path="model terbaru/model_grape.tflite")
+filter_interpreter.allocate_tensors()
+filter_input_details = filter_interpreter.get_input_details()
+filter_output_details = filter_interpreter.get_output_details()
+print(f"[INIT] Filter model loaded: input={filter_input_details[0]['shape']}, output={filter_output_details[0]['shape']}")
 
-FILTER_CLASS_NAMES = ["bukan_daun_anggur", "daun_anggur"]
-FILTER_THRESHOLD = 0.7  # Minimum confidence untuk dianggap daun anggur
+FILTER_THRESHOLD = 0.5  # Jika output < 0.5 = daun anggur
 
-# ==================== MODEL DETEKSI PENYAKIT ====================
-# Model CNN (MobileNetV2-based) dilatih dengan 55k dataset
-# Input: 224x224x3, Output: 4 kelas penyakit
-disease_model = keras.models.load_model("model/model_anggur_final.keras")
+# ==================== MODEL DETEKSI PENYAKIT (TFLite) ====================
+disease_interpreter = tf.lite.Interpreter(model_path="model terbaru/model_anggur_final.tflite")
+disease_interpreter.allocate_tensors()
+disease_input_details = disease_interpreter.get_input_details()
+disease_output_details = disease_interpreter.get_output_details()
+print(f"[INIT] Disease model loaded: input={disease_input_details[0]['shape']}, output={disease_output_details[0]['shape']}")
 
 class_names = [
     "Black Rot",
@@ -26,10 +33,19 @@ class_names = [
 ]
 
 # ==================== HELPER ====================
-def preprocess_image(image_bytes):
+def preprocess_for_filter(image_bytes):
+    """Preprocess untuk model filter: normalized [0, 1]."""
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     image = image.resize((224, 224))
-    image_array = np.array(image) / 255.0
+    image_array = np.array(image, dtype=np.float32) / 255.0  # [0, 1] normalization
+    image_array = np.expand_dims(image_array, axis=0)
+    return image_array
+
+def preprocess_for_disease(image_bytes):
+    """Preprocess untuk model penyakit: normalized [0, 1]."""
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    image = image.resize((224, 224))
+    image_array = np.array(image, dtype=np.float32) / 255.0  # [0, 1]
     image_array = np.expand_dims(image_array, axis=0)
     return image_array
 
@@ -37,29 +53,20 @@ def preprocess_image(image_bytes):
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     image_bytes = await file.read()
-    processed_image = preprocess_image(image_bytes)
 
     # Step 1: Filter — apakah gambar ini daun anggur?
-    filter_prediction = filter_model.predict(processed_image)
+    filter_input = preprocess_for_filter(image_bytes)
+    filter_interpreter.set_tensor(filter_input_details[0]['index'], filter_input)
+    filter_interpreter.invoke()
+    filter_output = filter_interpreter.get_tensor(filter_output_details[0]['index'])
 
-    # DEBUG: cetak raw output model filter
-    print(f"[DEBUG FILTER] Raw output shape: {filter_prediction.shape}")
-    print(f"[DEBUG FILTER] Raw output value: {filter_prediction[0]}")
-
-    # Handle baik sigmoid (1 output) maupun softmax (2 output)
-    if filter_prediction.shape[-1] == 1:
-        # Sigmoid: output = probabilitas kelas 0 (bukan_daun_anggur)
-        # Jadi probabilitas daun anggur = 1 - output
-        raw_value = float(filter_prediction[0][0])
-        grape_leaf_confidence = 1.0 - raw_value
-    else:
-        # Softmax: index 1 = daun anggur
-        grape_leaf_confidence = float(filter_prediction[0][1])
-
+    raw_value = float(filter_output[0][0])
+    # Output mendekati 0 = daun anggur, mendekati 1 = bukan daun anggur
+    # grape_leaf_confidence = 1 - raw_value (dibalik agar mendekati 1 = daun anggur)
+    grape_leaf_confidence = 1.0 - raw_value
     is_grape_leaf = grape_leaf_confidence >= FILTER_THRESHOLD
 
-    print(f"[DEBUG FILTER] grape_leaf_confidence: {grape_leaf_confidence}")
-    print(f"[DEBUG FILTER] is_grape_leaf: {is_grape_leaf} (threshold: {FILTER_THRESHOLD})")
+    print(f"[DEBUG FILTER] raw_value: {raw_value:.4f}, grape_leaf_confidence: {grape_leaf_confidence:.4f}, is_grape_leaf: {is_grape_leaf}")
 
     if not is_grape_leaf:
         return {
@@ -68,10 +75,14 @@ async def predict(file: UploadFile = File(...)):
             "message": "Gambar yang diunggah bukan daun anggur. Silakan unggah foto daun anggur untuk deteksi penyakit."
         }
 
-    # Step 2: Deteksi penyakit (hanya jika lolos filter)
-    prediction = disease_model.predict(processed_image)
-    predicted_index = int(np.argmax(prediction[0]))
-    confidence = float(np.max(prediction[0]))
+    # Step 2: Deteksi penyakit
+    disease_input = preprocess_for_disease(image_bytes)
+    disease_interpreter.set_tensor(disease_input_details[0]['index'], disease_input)
+    disease_interpreter.invoke()
+    disease_output = disease_interpreter.get_tensor(disease_output_details[0]['index'])
+
+    predicted_index = int(np.argmax(disease_output[0]))
+    confidence = float(np.max(disease_output[0]))
 
     return {
         "is_grape_leaf": True,
@@ -84,17 +95,14 @@ async def predict(file: UploadFile = File(...)):
 async def filter_leaf(file: UploadFile = File(...)):
     """Endpoint khusus untuk testing filter saja."""
     image_bytes = await file.read()
-    processed_image = preprocess_image(image_bytes)
+    filter_input = preprocess_for_filter(image_bytes)
+    
+    filter_interpreter.set_tensor(filter_input_details[0]['index'], filter_input)
+    filter_interpreter.invoke()
+    filter_output = filter_interpreter.get_tensor(filter_output_details[0]['index'])
 
-    filter_prediction = filter_model.predict(processed_image)
-
-    # Handle baik sigmoid (1 output) maupun softmax (2 output)
-    if filter_prediction.shape[-1] == 1:
-        # Sigmoid: output = probabilitas bukan_daun_anggur, jadi dibalik
-        grape_leaf_confidence = 1.0 - float(filter_prediction[0][0])
-    else:
-        grape_leaf_confidence = float(filter_prediction[0][1])
-
+    raw_value = float(filter_output[0][0])
+    grape_leaf_confidence = 1.0 - raw_value
     is_grape_leaf = grape_leaf_confidence >= FILTER_THRESHOLD
 
     return {

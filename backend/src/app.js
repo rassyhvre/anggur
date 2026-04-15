@@ -31,4 +31,14 @@ app.use("/api/penyakit", penyakitRoutes);
 app.use("/api/penanganan", penangananRoutes);
 app.use("/api/deteksi", deteksiRoutes);
 
+// Global Error Handler to guarantee JSON responses
+app.use((err, req, res, next) => {
+    console.error("Global Error Handler caught:", err);
+    res.status(err.status || 500).json({
+        success: false,
+        message: err.message || "Terjadi kesalahan pada server",
+        error: err.toString()
+    });
+});
+
 module.exports = app;

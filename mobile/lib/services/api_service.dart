@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http_parser/http_parser.dart';
 import '../config/constants.dart';
 
 class ApiService {
@@ -25,15 +27,15 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
     );
-    final data = jsonDecode(response.body);
+    final responseData = jsonDecode(response.body);
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 && responseData['data'] != null) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', data['token']);
-      await prefs.setString('user', jsonEncode(data));
+      await prefs.setString('token', responseData['data']['token']);
+      await prefs.setString('user', jsonEncode(responseData['data']));
     }
 
-    return {'statusCode': response.statusCode, 'data': data};
+    return {'statusCode': response.statusCode, 'data': responseData};
   }
 
   static Future<Map<String, dynamic>> register(
@@ -43,15 +45,15 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'nama': nama, 'email': email, 'password': password}),
     );
-    final data = jsonDecode(response.body);
+    final responseData = jsonDecode(response.body);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 201 && responseData['data'] != null) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', data['token']);
-      await prefs.setString('user', jsonEncode(data));
+      await prefs.setString('token', responseData['data']['token']);
+      await prefs.setString('user', jsonEncode(responseData['data']));
     }
 
-    return {'statusCode': response.statusCode, 'data': data};
+    return {'statusCode': response.statusCode, 'data': responseData};
   }
 
   static Future<void> logout() async {
@@ -72,7 +74,7 @@ class ApiService {
     return token != null;
   }
 
-  static Future<Map<String, dynamic>> predict(File imageFile) async {
+  static Future<Map<String, dynamic>> predict(XFile imageFile) async {
     final token = await _getToken();
     final request = http.MultipartRequest(
       'POST',
@@ -83,8 +85,14 @@ class ApiService {
       request.headers['Authorization'] = 'Bearer $token';
     }
 
+    final bytes = await imageFile.readAsBytes();
     request.files.add(
-      await http.MultipartFile.fromPath('file', imageFile.path),
+      http.MultipartFile.fromBytes(
+        'file', 
+        bytes, 
+        filename: imageFile.name,
+        contentType: MediaType('image', 'jpeg'),
+      ),
     );
 
     final streamedResponse = await request.send();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/deteksi_result_model.dart';
 import '../services/database_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class DeteksiProvider extends ChangeNotifier {
   final DatabaseService _dbService = DatabaseService();
@@ -10,12 +11,13 @@ class DeteksiProvider extends ChangeNotifier {
   List<DeteksiResult> get deteksiResults => _deteksiResults;
   bool get isLoading => _isLoading;
 
-  Future<void> loadDeteksiResults() async {
+  Future<void> loadDeteksiResults(int idPengguna) async {
+    if (kIsWeb) return;
     _isLoading = true;
     notifyListeners();
 
     try {
-      _deteksiResults = await _dbService.getAllDeteksiResults();
+      _deteksiResults = await _dbService.getAllDeteksiResults(idPengguna);
     } catch (e) {
       rethrow;
     }
@@ -24,28 +26,33 @@ class DeteksiProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addDeteksiResult(DeteksiResult result) async {
+  Future<void> addDeteksiResult(DeteksiResult result, int? idPengguna) async {
+    if (kIsWeb) return;
     try {
       await _dbService.insertDeteksiResult(result);
-      await loadDeteksiResults();
+      if (idPengguna != null) {
+        await loadDeteksiResults(idPengguna);
+      }
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<void> deleteDeteksiResult(int id) async {
+  Future<void> deleteDeteksiResult(int id, int idPengguna) async {
+    if (kIsWeb) return;
     try {
       await _dbService.deleteDeteksiResult(id);
-      await loadDeteksiResults();
+      await loadDeteksiResults(idPengguna);
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<void> clearAllDeteksiResults() async {
+  Future<void> clearAllDeteksiResults(int idPengguna) async {
+    if (kIsWeb) return;
     try {
       await _dbService.deleteAllDeteksiResults();
-      await loadDeteksiResults();
+      await loadDeteksiResults(idPengguna);
     } catch (e) {
       rethrow;
     }

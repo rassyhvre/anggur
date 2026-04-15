@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import '../providers/deteksi_provider.dart';
 import '../models/deteksi_result_model.dart';
 import '../services/api_service.dart';
+import '../services/tflite_service.dart';
+import '../providers/auth_provider.dart';
+import 'auth/login_page.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -14,9 +18,9 @@ class ScanScreen extends StatefulWidget {
 }
 
 class _ScanScreenState extends State<ScanScreen> {
-  static const double MIN_CONFIDENCE = 0.6;
+  static const double minConfidence = 0.6;
   bool _isLoading = false;
-  File? _selectedImage;
+  XFile? _selectedImage;
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -35,17 +39,16 @@ class _ScanScreenState extends State<ScanScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFF16A34A), width: 2),
                 ),
-                child: Image.file(
-                  _selectedImage!,
-                  fit: BoxFit.cover,
-                ),
+                child: kIsWeb
+                    ? Image.network(_selectedImage!.path, fit: BoxFit.cover)
+                    : Image.file(File(_selectedImage!.path), fit: BoxFit.cover),
               )
             else
               Container(
                 width: double.infinity,
                 height: 250,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A).withOpacity(0.08),
+                  color: const Color(0xFF16A34A).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFF16A34A), width: 2),
                 ),
@@ -58,10 +61,7 @@ class _ScanScreenState extends State<ScanScreen> {
             const SizedBox(height: 24),
             const Text(
               'Deteksi Penyakit Tanaman',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
@@ -69,10 +69,7 @@ class _ScanScreenState extends State<ScanScreen> {
               _selectedImage != null
                   ? 'Foto tanaman sudah siap untuk dianalisis'
                   : 'Gunakan kamera untuk mengambil foto tanaman dan AI kami akan menganalisis penyakit yang mungkin ada',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -87,7 +84,9 @@ class _ScanScreenState extends State<ScanScreen> {
                   backgroundColor: const Color(0xFF16A34A),
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -102,7 +101,9 @@ class _ScanScreenState extends State<ScanScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF16A34A),
                   side: const BorderSide(color: Color(0xFF16A34A), width: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -119,15 +120,21 @@ class _ScanScreenState extends State<ScanScreen> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Icon(Icons.check_circle),
-                  label: Text(_isLoading ? 'Menyimpan...' : 'Analisis Sekarang'),
+                  label: Text(
+                    _isLoading ? 'Menyimpan...' : 'Analisis Sekarang',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0EA5E9),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -143,7 +150,9 @@ class _ScanScreenState extends State<ScanScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
                     side: const BorderSide(color: Colors.red, width: 2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -152,9 +161,12 @@ class _ScanScreenState extends State<ScanScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0EA5E9).withOpacity(0.08),
+                  color: const Color(0xFF0EA5E9).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF0EA5E9), width: 1.5),
+                  border: Border.all(
+                    color: const Color(0xFF0EA5E9),
+                    width: 1.5,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,17 +201,23 @@ class _ScanScreenState extends State<ScanScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.08),
+                        color: Colors.orange.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                        border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.info, size: 18, color: Colors.orange),
+                          const Icon(
+                            Icons.info,
+                            size: 18,
+                            color: Colors.orange,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Hasil hanya valid jika confidence ≥ ${(MIN_CONFIDENCE * 100).toStringAsFixed(0)}%',
+                              'Hasil hanya valid jika confidence ≥ ${(minConfidence * 100).toStringAsFixed(0)}%',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.orange,
@@ -221,6 +239,15 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> _scanFromCamera() async {
+    final authProvider = context.read<AuthProvider>();
+    if (!authProvider.isLoggedIn) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
+      return;
+    }
+
     try {
       final photo = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -228,18 +255,27 @@ class _ScanScreenState extends State<ScanScreen> {
       );
       if (photo != null) {
         setState(() {
-          _selectedImage = File(photo.path);
+          _selectedImage = photo;
         });
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   Future<void> _scanFromGallery() async {
+    final authProvider = context.read<AuthProvider>();
+    if (!authProvider.isLoggedIn) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
+      return;
+    }
+
     try {
       final photo = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -247,14 +283,14 @@ class _ScanScreenState extends State<ScanScreen> {
       );
       if (photo != null) {
         setState(() {
-          _selectedImage = File(photo.path);
+          _selectedImage = photo;
         });
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -276,7 +312,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
       if (!mounted) return;
 
-      if (result['statusCode'] != 200) {
+      if (result['statusCode'] != 200 && result['statusCode'] != 201) {
         final errorMsg = result['data']['message'] ?? 'Prediksi gagal';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -290,10 +326,11 @@ class _ScanScreenState extends State<ScanScreen> {
         return;
       }
 
-      final prediction = result['data'];
+      final responseData = result['data'];
+      final prediction = responseData['data']; // Mengambil object data di dalam JSON API
       final confidence = (prediction['confidence'] ?? 0.0).toDouble();
 
-      if (confidence < MIN_CONFIDENCE) {
+      if (confidence < minConfidence) {
         if (!mounted) return;
         _showInvalidDialog(context, confidence);
         setState(() {
@@ -304,7 +341,11 @@ class _ScanScreenState extends State<ScanScreen> {
 
       final rekomendasi = _getRekomendasi(prediction['penyakit']);
 
+      final authProvider = context.read<AuthProvider>();
+      final int? idPengguna = authProvider.isLoggedIn ? authProvider.user!.idPengguna : null;
+
       final deteksiResult = DeteksiResult(
+        idPengguna: idPengguna,
         imagePath: _selectedImage!.path,
         namaGambar: _selectedImage!.path.split('/').last,
         resultPenyakit: prediction['penyakit'] ?? 'Tidak diketahui',
@@ -314,25 +355,24 @@ class _ScanScreenState extends State<ScanScreen> {
       );
 
       if (!mounted) return;
-      final provider = context.read<DeteksiProvider>();
-      await provider.addDeteksiResult(deteksiResult);
+      bool saved = false;
+
+      if (authProvider.isLoggedIn) {
+        final provider = context.read<DeteksiProvider>();
+        await provider.addDeteksiResult(deteksiResult, authProvider.user!.idPengguna);
+        saved = true;
+      }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hasil deteksi berhasil disimpan!'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      _showResultDialog(context, prediction, confidence, rekomendasi, saved);
 
-      setState(() {
-        _selectedImage = null;
-      });
     } on SocketException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Network Error: $e\nPastikan device terhubung ke jaringan yang sama dengan server.'),
+          content: Text(
+            'Network Error: $e\nPastikan device terhubung ke jaringan yang sama dengan server.',
+          ),
           duration: const Duration(seconds: 5),
         ),
       );
@@ -371,7 +411,7 @@ class _ScanScreenState extends State<ScanScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -386,11 +426,8 @@ class _ScanScreenState extends State<ScanScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Minimum required: ${(MIN_CONFIDENCE * 100).toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    'Minimum required: ${(minConfidence * 100).toStringAsFixed(0)}%',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -429,6 +466,43 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
+  void _showResultDialog(BuildContext context, dynamic prediction, double confidence, String rekomendasi, bool saved) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Hasil Deteksi'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Penyakit: ${prediction['penyakit'] ?? 'Tidak diketahui'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 8),
+            Text('Akurasi: ${(confidence * 100).toStringAsFixed(1)}%'),
+            const SizedBox(height: 8),
+            Text('Rekomendasi:\n$rekomendasi'),
+            const SizedBox(height: 16),
+            if (saved)
+              const Text('✅ Berhasil disimpan di Riwayat', style: TextStyle(color: Colors.green))
+            else
+              const Text('⚠️ Tidak disimpan. Login untuk menyimpan riwayat.', style: TextStyle(color: Colors.orange)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _selectedImage = null;
+              });
+            },
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _getRekomendasi(String penyakit) {
     switch (penyakit.toLowerCase()) {
       case 'black measles':
@@ -450,4 +524,3 @@ class _ScanScreenState extends State<ScanScreen> {
     });
   }
 }
-
