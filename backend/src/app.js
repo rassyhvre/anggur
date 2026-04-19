@@ -31,4 +31,12 @@ app.use("/api/penyakit", penyakitRoutes);
 app.use("/api/penanganan", penangananRoutes);
 app.use("/api/deteksi", deteksiRoutes);
 
+app.use((err, req, res, next) => {
+    console.error("Express Error:", err.message);
+    res.status(500).json({
+        success: false,
+        message: err.message || "Internal Server Error",
+    });
+});
+
 module.exports = app;

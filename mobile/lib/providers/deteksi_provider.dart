@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/deteksi_result_model.dart';
-import '../services/database_service.dart';
+import '../services/api_service.dart';
+import '../config/constants.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class DeteksiProvider extends ChangeNotifier {
-  final DatabaseService _dbService = DatabaseService();
   List<DeteksiResult> _deteksiResults = [];
   bool _isLoading = false;
 
@@ -12,14 +12,26 @@ class DeteksiProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   Future<void> loadDeteksiResults() async {
-    if (kIsWeb) return;
     _isLoading = true;
     notifyListeners();
 
     try {
-      _deteksiResults = await _dbService.getAllDeteksiResults();
+      final res = await ApiService.getRiwayat();
+      if (res['statusCode'] == 200) {
+        final List<dynamic> data = res['data']['data'] ?? [];
+        _deteksiResults = data.map((e) {
+          return DeteksiResult(
+            id: e['id_deteksi'],
+            imagePath: '${AppConstants.uploadsUrl}/${e['gambar_upload']}',
+            namaGambar: e['gambar_upload'],
+            resultPenyakit: e['nama_penyakit'],
+            confidence: double.tryParse((e['tingkat_keyakinan'] ?? '0').toString()),
+            waktu: DateTime.parse(e['tanggal_deteksi']).toLocal(),
+          );
+        }).toList();
+      }
     } catch (e) {
-      rethrow;
+      // ignore
     }
 
     _isLoading = false;
@@ -27,32 +39,20 @@ class DeteksiProvider extends ChangeNotifier {
   }
 
   Future<void> addDeteksiResult(DeteksiResult result) async {
-    if (kIsWeb) return;
-    try {
-      await _dbService.insertDeteksiResult(result);
-      await loadDeteksiResults();
-    } catch (e) {
-      rethrow;
-    }
+    // Penambahan deteksi di-handle secara otomatis oleh endpoint predict!
+    // Kita cukup nge-load ulang saja!
+    await loadDeteksiResults();
   }
 
   Future<void> deleteDeteksiResult(int id) async {
-    if (kIsWeb) return;
-    try {
-      await _dbService.deleteDeteksiResult(id);
-      await loadDeteksiResults();
-    } catch (e) {
-      rethrow;
-    }
+    // TODO: implement jika backend memiliki endpoint DELETE
+    // Untuk saat ini kita hapus dari state lokal jika API belum sedia.
+    _deteksiResults.removeWhere((item) => item.id == id);
+    notifyListeners();
   }
 
   Future<void> clearAllDeteksiResults() async {
-    if (kIsWeb) return;
-    try {
-      await _dbService.deleteAllDeteksiResults();
-      await loadDeteksiResults();
-    } catch (e) {
-      rethrow;
-    }
+    _deteksiResults.clear();
+    notifyListeners();
   }
 }

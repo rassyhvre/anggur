@@ -1,112 +1,198 @@
-from fastapi import FastAPI, UploadFile, File
-import tensorflow as tf
-from PIL import Image
-import numpy as np
+import os
 import io
+import numpy as np
+from PIL import Image
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+import tensorflow as tf
 
-app = FastAPI()
+# Inisialisasi FastAPI
+app = FastAPI(title="KingScan AI Server", description="Keras Classification - Grape Leaf Disease Detection")
 
-# ==================== MODEL FILTER DAUN (TFLite) ====================
-# Model filter BARU (model_grape) — Sigmoid, 1 output
-# Output mendekati 0 = daun anggur, mendekati 1 = BUKAN daun anggur
-# Preprocessing: raw pixel [0-255], TANPA normalisasi
-filter_interpreter = tf.lite.Interpreter(model_path="model terbaru/model_grape.tflite")
-filter_interpreter.allocate_tensors()
-filter_input_details = filter_interpreter.get_input_details()
-filter_output_details = filter_interpreter.get_output_details()
-print(f"[INIT] Filter model loaded: input={filter_input_details[0]['shape']}, output={filter_output_details[0]['shape']}")
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-FILTER_THRESHOLD = 0.5  # Jika output < 0.5 = daun anggur
+# Global model variable
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model", "super_leaf_model.keras")
+model = None
 
-# ==================== MODEL DETEKSI PENYAKIT (TFLite) ====================
-disease_interpreter = tf.lite.Interpreter(model_path="model terbaru/model_anggur_final.tflite")
-disease_interpreter.allocate_tensors()
-disease_input_details = disease_interpreter.get_input_details()
-disease_output_details = disease_interpreter.get_output_details()
-print(f"[INIT] Disease model loaded: input={disease_input_details[0]['shape']}, output={disease_output_details[0]['shape']}")
+# Harus sesuai dengan output node model.
+# ["Black Rot", "ESCA", "Healthy", "Leaf Blight", "bukan_daun_anggur"]
+CLASS_NAMES = ["Black Rot", "ESCA", "Healthy", "Leaf Blight", "bukan_daun_anggur"]
 
-class_names = [
-    "Black Rot",
-    "Black Measles",
-    "Isariopsis Leaf Spot",
-    "Healthy"
-]
+# Kelas VALID penyakit daun anggur (exclude bukan_daun_anggur)
+VALID_DISEASE_CLASSES = {"Black Rot", "ESCA", "Healthy", "Leaf Blight"}
 
-# ==================== HELPER ====================
-def preprocess_for_filter(image_bytes):
-    """Preprocess untuk model filter: normalized [0, 1]."""
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    image = image.resize((224, 224))
-    image_array = np.array(image, dtype=np.float32) / 255.0  # [0, 1] normalization
-    image_array = np.expand_dims(image_array, axis=0)
-    return image_array
+# Mapping nama kelas model -> nama yang dipakai di database/frontend
+CLASS_NAME_MAP = {
+    "ESCA": "Black Measles",
+    "Leaf Blight": "Isariopsis Leaf Spot",
+}
 
-def preprocess_for_disease(image_bytes):
-    """Preprocess untuk model penyakit: normalized [0, 1]."""
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    image = image.resize((224, 224))
-    image_array = np.array(image, dtype=np.float32) / 255.0  # [0, 1]
-    image_array = np.expand_dims(image_array, axis=0)
-    return image_array
 
-# ==================== ENDPOINTS ====================
+def get_model():
+    """Lazy-load Keras classification model on first request"""
+    global model
+    if model is None:
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(
+                f"Model tidak ditemukan di: {MODEL_PATH}. "
+                f"Pastikan file super_leaf_model.keras sudah ditaruh di folder 'model/'."
+            )
+        print(f"[INFO] Loading Keras Classification model from: {MODEL_PATH}")
+        model = tf.keras.models.load_model(MODEL_PATH)
+        print(f"[✓] Model loaded. Expected classes: {CLASS_NAMES}")
+    return model
+
+
+def map_class_name(raw_name: str) -> str:
+    return CLASS_NAME_MAP.get(raw_name, raw_name)
+
+
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "KingScan AI Server (Keras Classification) berjalan"}
+
+
+@app.get("/health")
+def health():
+    loaded = model is not None
+    return {
+        "status": "ok",
+        "model_loaded": loaded,
+        "model_path": MODEL_PATH,
+        "classes": CLASS_NAMES if loaded else None,
+    }
+
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    image_bytes = await file.read()
+    try:
+        keras_model = get_model()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Gagal memuat model: {str(e)}"},
+        )
 
-    # Step 1: Filter — apakah gambar ini daun anggur?
-    filter_input = preprocess_for_filter(image_bytes)
-    filter_interpreter.set_tensor(filter_input_details[0]['index'], filter_input)
-    filter_interpreter.invoke()
-    filter_output = filter_interpreter.get_tensor(filter_output_details[0]['index'])
+    try:
+        # Load and preprocess the image
+        image_bytes = await file.read()
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        image = image.resize((224, 224))
+        
+        img_array = np.array(image, dtype=np.float32)
+        # Expand dimension manually as Keras models expect a batch dimension (1, 224, 224, 3)
+        img_array = np.expand_dims(img_array, axis=0)
 
-    raw_value = float(filter_output[0][0])
-    # Output mendekati 0 = daun anggur, mendekati 1 = bukan daun anggur
-    # grape_leaf_confidence = 1 - raw_value (dibalik agar mendekati 1 = daun anggur)
-    grape_leaf_confidence = 1.0 - raw_value
-    is_grape_leaf = grape_leaf_confidence >= FILTER_THRESHOLD
+        # Inisialisasi model prediksi
+        preds = keras_model.predict(img_array, verbose=0)
+        raw_probs = preds[0].tolist()
 
-    print(f"[DEBUG FILTER] raw_value: {raw_value:.4f}, grape_leaf_confidence: {grape_leaf_confidence:.4f}, is_grape_leaf: {is_grape_leaf}")
+        if raw_probs is None or len(raw_probs) == 0:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "message": "Prediksi gagal."},
+            )
 
-    if not is_grape_leaf:
-        return {
-            "is_grape_leaf": False,
-            "filter_confidence": grape_leaf_confidence,
-            "message": "Gambar yang diunggah bukan daun anggur. Silakan unggah foto daun anggur untuk deteksi penyakit."
-        }
+        # ===============================================================
+        # Ambil HANYA kelas penyakit valid (exclude bukan_daun_anggur)
+        # Lalu renormalisasi agar totalnya = 1.0
+        # ===============================================================
+        valid_predictions = []
+        total_valid_prob = 0.0
 
-    # Step 2: Deteksi penyakit
-    disease_input = preprocess_for_disease(image_bytes)
-    disease_interpreter.set_tensor(disease_input_details[0]['index'], disease_input)
-    disease_interpreter.invoke()
-    disease_output = disease_interpreter.get_tensor(disease_output_details[0]['index'])
+        bukan_idx = CLASS_NAMES.index("bukan_daun_anggur")
+        bukan_prob = raw_probs[bukan_idx]
+        
+        # Logika "Bukan Daun Anggur" jika prediksi tertingginya "bukan_daun_anggur"
+        best_overall_idx = int(np.argmax(raw_probs))
+        if best_overall_idx == bukan_idx or bukan_prob > 0.5:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "is_grape_leaf": False,
+                    "filter_confidence": round(float(bukan_prob), 4),
+                    "message": "Objek terdeteksi bukan daun anggur",
+                },
+            )
 
-    predicted_index = int(np.argmax(disease_output[0]))
-    confidence = float(np.max(disease_output[0]))
+        for idx, prob in enumerate(raw_probs):
+            class_name = CLASS_NAMES[idx]
+            if class_name in VALID_DISEASE_CLASSES:
+                valid_predictions.append({
+                    "class_id": idx,
+                    "penyakit_raw": class_name,
+                    "penyakit": map_class_name(class_name),
+                    "raw_prob": prob,
+                })
+                total_valid_prob += prob
 
-    return {
-        "is_grape_leaf": True,
-        "filter_confidence": grape_leaf_confidence,
-        "penyakit": class_names[predicted_index],
-        "confidence": confidence
-    }
+        # Renormalisasi confidence hanya dari kelas valid
+        for pred in valid_predictions:
+            if total_valid_prob > 0:
+                pred["confidence"] = round(pred["raw_prob"] / total_valid_prob, 4)
+            else:
+                pred["confidence"] = round(1.0 / len(valid_predictions), 4)
 
-@app.post("/filter")
-async def filter_leaf(file: UploadFile = File(...)):
-    """Endpoint khusus untuk testing filter saja."""
-    image_bytes = await file.read()
-    filter_input = preprocess_for_filter(image_bytes)
-    
-    filter_interpreter.set_tensor(filter_input_details[0]['index'], filter_input)
-    filter_interpreter.invoke()
-    filter_output = filter_interpreter.get_tensor(filter_output_details[0]['index'])
+        valid_predictions.sort(key=lambda x: x["confidence"], reverse=True)
 
-    raw_value = float(filter_output[0][0])
-    grape_leaf_confidence = 1.0 - raw_value
-    is_grape_leaf = grape_leaf_confidence >= FILTER_THRESHOLD
+        best = valid_predictions[0] if valid_predictions else None
 
-    return {
-        "is_grape_leaf": is_grape_leaf,
-        "filter_confidence": grape_leaf_confidence,
-        "predicted_class": "daun_anggur" if is_grape_leaf else "bukan_daun_anggur",
-    }
+        # Log
+        print(f"[PREDICT] bukan_prob={bukan_prob:.4f} | valid_total={total_valid_prob:.6f}")
+        if best:
+            print(f"[PREDICT] Best: {best['penyakit']} (renorm={best['confidence']:.4f}, raw={best['raw_prob']:.6f})")
+        for p in valid_predictions:
+            print(f"  - {p['penyakit']:25s}: renorm={p['confidence']:.4f} | raw={p['raw_prob']:.6f}")
+
+        if not best:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "is_grape_leaf": False,
+                    "filter_confidence": 0.0,
+                    "message": "Gagal mengklasifikasi gambar.",
+                },
+            )
+
+        # ===============================================================
+        # Return hasil — confidence sudah direnormalisasi
+        # ===============================================================
+        return JSONResponse(
+            status_code=200,
+            content={
+                "is_grape_leaf": True,
+                "filter_confidence": round(float(best["confidence"]), 4),
+                "penyakit": best["penyakit"],
+                "confidence": round(float(best["confidence"]), 4),
+                "total_predictions": len(valid_predictions),
+                "all_predictions": [
+                    {"penyakit": p["penyakit"], "confidence": float(p["confidence"])}
+                    for p in valid_predictions
+                ],
+                "message": "Deteksi berhasil",
+            },
+        )
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Error: {str(e)}"},
+        )
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

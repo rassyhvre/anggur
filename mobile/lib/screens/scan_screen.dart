@@ -6,7 +6,7 @@ import 'dart:io';
 import '../providers/deteksi_provider.dart';
 import '../models/deteksi_result_model.dart';
 import '../services/api_service.dart';
-import '../services/tflite_service.dart';
+
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
 
@@ -124,7 +124,7 @@ class _ScanScreenState extends State<ScanScreen> {
                         )
                       : const Icon(Icons.check_circle),
                   label: Text(
-                    _isLoading ? 'Menyimpan...' : 'Analisis Sekarang',
+                    _isLoading ? 'Menganalisis...' : 'Analisis Sekarang',
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0EA5E9),
@@ -239,7 +239,9 @@ class _ScanScreenState extends State<ScanScreen> {
     try {
       final photo = await _imagePicker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 85,
+        imageQuality: 80,
+        maxWidth: 800,
+        maxHeight: 800,
       );
       if (photo != null) {
         setState(() {
@@ -258,7 +260,9 @@ class _ScanScreenState extends State<ScanScreen> {
     try {
       final photo = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85,
+        imageQuality: 80,
+        maxWidth: 800,
+        maxHeight: 800,
       );
       if (photo != null) {
         setState(() {
@@ -281,12 +285,17 @@ class _ScanScreenState extends State<ScanScreen> {
     });
 
     try {
-      final result = await TfliteService.predict(_selectedImage!);
+      // Kirim gambar ke backend → AI server (YOLO)
+      final result = await ApiService.predict(_selectedImage!);
 
       if (!mounted) return;
 
-      if (result['statusCode'] != 200) {
-        final errorMsg = result['data']['message'] ?? 'Prediksi gagal';
+      final statusCode = result['statusCode'];
+      final data = result['data'];
+
+      // Cek error dari server
+      if (statusCode != 200 && statusCode != 201) {
+        final errorMsg = data['message'] ?? 'Prediksi gagal';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $errorMsg'),
@@ -299,7 +308,22 @@ class _ScanScreenState extends State<ScanScreen> {
         return;
       }
 
-      final prediction = result['data'];
+      // Cek response dari API — data ada di data['data'] jika dari backend
+      final prediction = data['data'] ?? data;
+
+      // Cek apakah gambar bukan daun anggur (filter YOLO)
+      if (prediction['is_grape_leaf'] == false) {
+        if (!mounted) return;
+        _showNotGrapeLeafDialog(
+          context,
+          prediction['message'] ?? 'Bukan daun anggur',
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
       final confidence = (prediction['confidence'] ?? 0.0).toDouble();
 
       if (confidence < minConfidence) {
@@ -311,12 +335,13 @@ class _ScanScreenState extends State<ScanScreen> {
         return;
       }
 
-      final rekomendasi = _getRekomendasi(prediction['penyakit']);
+      final penyakit = prediction['penyakit'] ?? 'Tidak diketahui';
+      final rekomendasi = _getRekomendasi(penyakit);
 
       final deteksiResult = DeteksiResult(
         imagePath: _selectedImage!.path,
         namaGambar: _selectedImage!.path.split('/').last,
-        resultPenyakit: prediction['penyakit'] ?? 'Tidak diketahui',
+        resultPenyakit: penyakit,
         confidence: confidence,
         rekomendasi: rekomendasi,
         waktu: DateTime.now(),
@@ -362,6 +387,66 @@ class _ScanScreenState extends State<ScanScreen> {
         });
       }
     }
+  }
+
+  void _showNotGrapeLeafDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bukan Daun Anggur'),
+        icon: const Icon(Icons.block, color: Colors.red, size: 32),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pastikan:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '• Foto adalah daun anggur\n'
+                    '• Gambar jelas dan tidak blur\n'
+                    '• Pencahayaan cukup baik\n'
+                    '• Fokus pada daun anggur',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Coba Lagi'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _selectedImage = null;
+              });
+            },
+            child: const Text('Batal', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showInvalidDialog(BuildContext context, double confidence) {

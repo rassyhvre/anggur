@@ -4,6 +4,7 @@ import '../providers/deteksi_provider.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
+import 'riwayat/riwayat_detail_screen.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -75,140 +76,99 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ).format(result.waktu);
 
             return Card(
-              elevation: 2,
-              margin: const EdgeInsets.only(bottom: 12),
+              elevation: 4,
+              shadowColor: Colors.black.withValues(alpha: 0.1),
+              margin: const EdgeInsets.only(bottom: 16),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (kIsWeb) ...[
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () {
+                  if (result.id != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RiwayatDetailScreen(id: result.id!),
                       ),
-                      child: Container(
-                        width: double.infinity,
-                        height: 180,
-                        color: Colors.grey[300],
-                        child: Image.network(
-                          result.imagePath,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.broken_image,
-                                  size: 50, color: Colors.grey),
-                        ),
-                      ),
-                    ),
-                  ] else if (File(result.imagePath).existsSync()) ...[
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                      ),
-                      child: Container(
-                        width: double.infinity,
-                        height: 180,
-                        color: Colors.grey[300],
-                        child: Image.file(
-                          File(result.imagePath),
-                          fit: BoxFit.cover,
-                        ),
+                    );
+                  }
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      height: 180,
+                      color: Colors.grey[200],
+                      child: Image.network(
+                        result.imagePath,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.broken_image,
+                                size: 50, color: Colors.grey),
                       ),
                     ),
-                  ],
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          formattedDate,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        if (result.resultPenyakit != null)
-                          Text(
-                            result.resultPenyakit!,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        if (result.confidence != null) ...[
-                          const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                'Akurasi: ',
-                                style: TextStyle(fontSize: 13),
-                              ),
                               Text(
-                                '${(result.confidence! * 100).toStringAsFixed(1)}%',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF16A34A),
+                                formattedDate,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                        if (result.rekomendasi != null) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: Colors.orange.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Rekomendasi:',
-                                  style: TextStyle(
+                              if (result.confidence != null)
+                                Text(
+                                  '${(result.confidence! * 100).toStringAsFixed(1)}%',
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
+                                    color: Color(0xFF16A34A),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  result.rekomendasi!,
-                                  style: const TextStyle(fontSize: 12),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (result.resultPenyakit != null)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    result.resultPenyakit!,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => _deleteDeteksi(context, result.id!),
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
                                 ),
                               ],
                             ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Klik untuk melihat penanganan lengkap',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.orange,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ],
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _deleteDeteksi(context, result.id!),
-                        icon: const Icon(Icons.delete),
-                        label: const Text('Hapus'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
-                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
+                  ],
+                ),
               ),
             );
           },

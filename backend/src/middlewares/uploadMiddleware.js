@@ -19,12 +19,12 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png"];
+  const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png", "application/octet-stream"];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("File harus berupa gambar JPG, JPEG, atau PNG"), false);
+    cb(new Error("File harus berupa gambar JPG, JPEG, atau PNG (diterima: " + file.mimetype + ")"), false);
   }
 };
 

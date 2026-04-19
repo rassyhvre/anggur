@@ -38,7 +38,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final result = await ApiService.login(email, password);
       if (result['statusCode'] == 200) {
-        final data = result['data'];
+        final data = result['data']['data'];
         _user = Pengguna(
           idPengguna: data['id_pengguna'] ?? 0,
           nama: data['nama'] ?? '',
@@ -56,7 +56,8 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      return 'Tidak dapat terhubung ke server';
+      print("API Error: $e");
+      return 'Error: $e';
     }
   }
 
@@ -67,7 +68,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final result = await ApiService.register(nama, email, password);
       if (result['statusCode'] == 201) {
-        final data = result['data'];
+        final data = result['data']['data'];
         _user = Pengguna(
           idPengguna: data['id_pengguna'] ?? 0,
           nama: data['nama'] ?? '',
@@ -80,14 +81,15 @@ class AuthProvider extends ChangeNotifier {
       } else {
         _isLoading = false;
         notifyListeners();
-        return result['data']['message'] ?? 'Registrasi gagal';
-      }
-    } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      return 'Tidak dapat terhubung ke server';
+      return result['data']['message'] ?? 'Registrasi gagal';
     }
+  } catch (e) {
+    _isLoading = false;
+    notifyListeners();
+    print("API Error: $e");
+    return 'Error: $e';
   }
+}
 
   Future<void> logout() async {
     await ApiService.logout();

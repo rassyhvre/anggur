@@ -30,8 +30,10 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', data['token']);
-      await prefs.setString('user', jsonEncode(data));
+      // data['data'] contains the user object and token
+      await prefs.setString('token', data['data']['token']);
+      // Save the inner object since it represents the user
+      await prefs.setString('user', jsonEncode(data['data']));
     }
 
     return {'statusCode': response.statusCode, 'data': data};
@@ -48,8 +50,8 @@ class ApiService {
 
     if (response.statusCode == 201) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', data['token']);
-      await prefs.setString('user', jsonEncode(data));
+      await prefs.setString('token', data['data']['token']);
+      await prefs.setString('user', jsonEncode(data['data']));
     }
 
     return {'statusCode': response.statusCode, 'data': data};

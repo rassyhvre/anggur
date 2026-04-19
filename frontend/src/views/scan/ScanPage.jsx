@@ -141,8 +141,8 @@ function ScanPage() {
                         <div style={p.diseaseList}>
                             {[
                                 { name: "Black Rot", color: "#7c3aed" },
-                                { name: "Esca (Black Measles)", color: "#dc2626" },
-                                { name: "Leaf Blight", color: "#ea580c" },
+                                { name: "Black Measles", color: "#dc2626" },
+                                { name: "Isariopsis Leaf Spot", color: "#ea580c" },
                                 { name: "Healthy", color: "#16a34a" },
                             ].map((d) => (
                                 <div key={d.name} style={p.diseaseTag}>
@@ -155,11 +155,11 @@ function ScanPage() {
 
                     {/* Filter Info Card */}
                     <div style={{ ...p.infoCard, background: "#fefce8", borderColor: "#fef08a" }}>
-                        <h3 style={{ ...p.infoTitle, color: "#854d0e" }}>🛡️ Filter Cerdas</h3>
+                        <h3 style={{ ...p.infoTitle, color: "#854d0e" }}>🛡️ Filter Cerdas YOLO</h3>
                         <p style={{ fontSize: "14px", color: "#713f12", lineHeight: 1.7, margin: 0 }}>
-                            Sistem kami dilengkapi AI filter yang secara otomatis mendeteksi apakah gambar yang
-                            diunggah adalah <strong>daun anggur</strong>. Gambar selain daun anggur (wajah, benda,
-                            daun tanaman lain) akan otomatis ditolak.
+                            Sistem kami menggunakan model <strong>YOLO</strong> yang secara otomatis mendeteksi dan mengklasifikasikan
+                            penyakit pada <strong>daun anggur</strong>. Jika tidak terdeteksi daun anggur pada gambar,
+                            maka gambar akan otomatis ditolak.
                         </p>
                     </div>
 
@@ -168,7 +168,7 @@ function ScanPage() {
                         <h3 style={p.infoTitle}>Tentang Model AI</h3>
                         <div style={p.statsGrid}>
                             <div style={p.statItem}>
-                                <p style={p.statVal}>CNN</p>
+                                <p style={p.statVal}>YOLOv8</p>
                                 <p style={p.statLabel}>Arsitektur</p>
                             </div>
                             <div style={p.statItem}>
@@ -192,8 +192,8 @@ function ScanPage() {
                         <div style={p.stepsList}>
                             {[
                                 "Upload atau foto daun anggur",
-                                "AI memfilter apakah itu daun anggur",
-                                "AI menganalisis pola penyakit pada daun",
+                                "YOLO mendeteksi & mengklasifikasi penyakit",
+                                "Jika bukan daun anggur, gambar ditolak",
                                 "Hasil diagnosis & rekomendasi ditampilkan",
                             ].map((step, i) => (
                                 <div key={i} style={p.stepRow}>

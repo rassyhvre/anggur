@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'scan_screen.dart';
 import 'riwayat_screen.dart';
 import 'tentang_screen.dart';
+import 'profil_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const ScanScreen(),
     const RiwayatScreen(),
     const TentangScreen(),
+    const ProfilScreen(),
   ];
 
   @override
@@ -24,15 +26,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'KingScan',
+          'rassyhvre',
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 22),
         ),
         centerTitle: true,
         elevation: 0,
         backgroundColor: const Color(0xFF16A34A),
+        foregroundColor: Colors.white,
       ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.camera_alt),
@@ -45,6 +49,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.info),
             label: 'Tentang',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profil',
           ),
         ],
         currentIndex: _selectedIndex,
