@@ -117,4 +117,68 @@ class ApiService {
     final data = jsonDecode(response.body);
     return {'statusCode': response.statusCode, 'data': data};
   }
+
+  static Future<Map<String, dynamic>> deleteDeteksi(int id) async {
+    final headers = await _authHeaders();
+    final response = await http.delete(
+      Uri.parse('${AppConstants.apiUrl}/deteksi/$id'),
+      headers: headers,
+    );
+    final data = jsonDecode(response.body);
+    return {'statusCode': response.statusCode, 'data': data};
+  }
+
+  static Future<Map<String, dynamic>> getStats() async {
+    final headers = await _authHeaders();
+    final response = await http.get(
+      Uri.parse('${AppConstants.apiUrl}/deteksi/stats'),
+      headers: headers,
+    );
+    final data = jsonDecode(response.body);
+    return {'statusCode': response.statusCode, 'data': data};
+  }
+
+  static Future<Map<String, dynamic>> uploadProfilePhoto(XFile imageFile) async {
+    final token = await _getToken();
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${AppConstants.apiUrl}/auth/profile/photo'),
+    );
+
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    final bytes = await imageFile.readAsBytes();
+    request.files.add(
+      http.MultipartFile.fromBytes('photo', bytes, filename: imageFile.name),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    final data = jsonDecode(response.body);
+
+    // Update user data di SharedPreferences jika berhasil
+    if (response.statusCode == 200 && data['success'] == true) {
+      final prefs = await SharedPreferences.getInstance();
+      final userStr = prefs.getString('user');
+      if (userStr != null) {
+        final userData = jsonDecode(userStr);
+        userData['foto_profil'] = data['data']['foto_profil'];
+        await prefs.setString('user', jsonEncode(userData));
+      }
+    }
+
+    return {'statusCode': response.statusCode, 'data': data};
+  }
+
+  static Future<Map<String, dynamic>> getProfile() async {
+    final headers = await _authHeaders();
+    final response = await http.get(
+      Uri.parse('${AppConstants.apiUrl}/auth/profile'),
+      headers: headers,
+    );
+    final data = jsonDecode(response.body);
+    return {'statusCode': response.statusCode, 'data': data};
+  }
 }

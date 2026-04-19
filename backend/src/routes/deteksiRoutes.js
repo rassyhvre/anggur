@@ -34,6 +34,8 @@ router.post("/predict", verifyToken, upload.single("file"), deteksiController.de
 
 router.post("/", deteksiController.simpanDeteksi);
 router.get("/riwayat", verifyToken, deteksiController.riwayatDeteksi);
+router.get("/stats", verifyToken, deteksiController.statsDeteksi);
 router.get("/:id", deteksiController.detailDeteksi);
+router.delete("/:id", verifyToken, deteksiController.hapusDeteksi);
 
 module.exports = router;

@@ -2,6 +2,7 @@ const {
     createHasilDeteksi,
     getRiwayatDeteksi,
     getDeteksiById,
+    deleteHasilDeteksi,
 } = require("../models/hasilDeteksiModel");
 const { getPenyakitByNama } = require("../models/penyakitModel");
 const { getPenangananByPenyakitId } = require("../models/penangananModel");
@@ -64,12 +65,22 @@ const detailDeteksi = async (req, res) => {
             });
         }
 
+        // Ambil penanganan dari database berdasarkan id_penyakit
+        const penanganan = await getPenangananByPenyakitId(data.id_penyakit);
+
+        // Konversi RowDataPacket ke plain object agar spread operator berfungsi
+        const plainData = JSON.parse(JSON.stringify(data));
+
         res.status(200).json({
             success: true,
             message: "Detail deteksi berhasil diambil",
-            data,
+            data: {
+                ...plainData,
+                penanganan,
+            },
         });
     } catch (error) {
+        console.error("Error detailDeteksi:", error);
         res.status(500).json({
             success: false,
             message: "Gagal mengambil detail deteksi",
@@ -143,9 +154,47 @@ const deteksiAI = async (req, res) => {
     }
 };
 
+const hapusDeteksi = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await deleteHasilDeteksi(id);
+        res.status(200).json({
+            success: true,
+            message: "Riwayat deteksi berhasil dihapus",
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Gagal menghapus riwayat deteksi",
+            error: error.message,
+        });
+    }
+};
+
+const statsDeteksi = async (req, res) => {
+    try {
+        const data = await getRiwayatDeteksi(req.user.id);
+        const total = data.length;
+        const sehat = data.filter(d => d.nama_penyakit && d.nama_penyakit.toLowerCase() === 'healthy').length;
+        const terinfeksi = total - sehat;
+        res.status(200).json({
+            success: true,
+            data: { total, sehat, terinfeksi },
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Gagal mengambil statistik",
+            error: error.message,
+        });
+    }
+};
+
 module.exports = {
     simpanDeteksi,
     riwayatDeteksi,
     detailDeteksi,
     deteksiAI,
+    hapusDeteksi,
+    statsDeteksi,
 };

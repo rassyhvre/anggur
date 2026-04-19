@@ -3,12 +3,14 @@ class Pengguna {
   final String nama;
   final String email;
   final String role;
+  final String? fotoProfil;
 
   Pengguna({
     required this.idPengguna,
     required this.nama,
     required this.email,
     required this.role,
+    this.fotoProfil,
   });
 
   factory Pengguna.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class Pengguna {
       nama: json['nama'],
       email: json['email'],
       role: json['role'] ?? 'user',
+      fotoProfil: json['foto_profil'],
     );
   }
 
@@ -26,6 +29,7 @@ class Pengguna {
       'nama': nama,
       'email': email,
       'role': role,
+      'foto_profil': fotoProfil,
     };
   }
 }

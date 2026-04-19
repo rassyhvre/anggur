@@ -45,10 +45,15 @@ class DeteksiProvider extends ChangeNotifier {
   }
 
   Future<void> deleteDeteksiResult(int id) async {
-    // TODO: implement jika backend memiliki endpoint DELETE
-    // Untuk saat ini kita hapus dari state lokal jika API belum sedia.
-    _deteksiResults.removeWhere((item) => item.id == id);
-    notifyListeners();
+    try {
+      await ApiService.deleteDeteksi(id);
+      _deteksiResults.removeWhere((item) => item.id == id);
+      notifyListeners();
+    } catch (e) {
+      // fallback: hapus lokal saja
+      _deteksiResults.removeWhere((item) => item.id == id);
+      notifyListeners();
+    }
   }
 
   Future<void> clearAllDeteksiResults() async {

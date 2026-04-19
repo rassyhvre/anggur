@@ -3,7 +3,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../providers/deteksi_provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/deteksi_result_model.dart';
 import '../services/api_service.dart';
 
@@ -20,207 +23,288 @@ class _ScanScreenState extends State<ScanScreen> {
   XFile? _selectedImage;
   final ImagePicker _imagePicker = ImagePicker();
 
+  // Data ensiklopedia penyakit anggur
+  final List<Map<String, dynamic>> _diseases = [
+    {
+      'name': 'Black Rot',
+      'icon': Icons.coronavirus,
+      'color': Color(0xFF1E293B),
+      'desc': 'Penyakit jamur yang menyebabkan bercak cokelat pada daun dan buah membusuk.',
+    },
+    {
+      'name': 'Black Measles',
+      'icon': Icons.bug_report,
+      'color': Color(0xFF7C3AED),
+      'desc': 'Dikenal juga sebagai Esca, menyerang pembuluh kayu tanaman anggur.',
+    },
+    {
+      'name': 'Leaf Blight',
+      'icon': Icons.local_fire_department,
+      'color': Color(0xFFEA580C),
+      'desc': 'Isariopsis leaf spot, menyebabkan bercak kuning-cokelat di permukaan daun.',
+    },
+    {
+      'name': 'Healthy',
+      'icon': Icons.eco,
+      'color': Color(0xFF10B981),
+      'desc': 'Daun sehat tanpa infeksi. Lanjutkan perawatan rutin untuk hasil panen optimal! 🌿',
+    },
+  ];
+
+  final List<Map<String, String>> _tips = [
+    {'title': 'Penyiraman Optimal', 'body': 'Siram anggur secara rutin pagi hari. Hindari menyiram saat matahari terik.', 'icon': '💧'},
+    {'title': 'Pemangkasan Rutin', 'body': 'Pangkas cabang yang tidak produktif setiap 3 bulan untuk sirkulasi udara baik.', 'icon': '✂️'},
+    {'title': 'Pupuk Organik', 'body': 'Gunakan kompos atau pupuk kandang untuk meningkatkan kesuburan tanah kebun.', 'icon': '🌱'},
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+    final auth = context.watch<AuthProvider>();
+    final userName = auth.user?.nama ?? 'Petani';
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
-            if (_selectedImage != null)
-              Container(
-                width: double.infinity,
-                height: 250,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF16A34A), width: 2),
-                ),
-                child: kIsWeb
-                    ? Image.network(_selectedImage!.path, fit: BoxFit.cover)
-                    : Image.file(File(_selectedImage!.path), fit: BoxFit.cover),
-              )
-            else
-              Container(
-                width: double.infinity,
-                height: 250,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF16A34A), width: 2),
-                ),
-                child: const Icon(
-                  Icons.image_not_supported,
-                  size: 80,
-                  color: Color(0xFF16A34A),
-                ),
-              ),
-            const SizedBox(height: 24),
-            const Text(
-              'Deteksi Penyakit Tanaman',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _selectedImage != null
-                  ? 'Foto tanaman sudah siap untuk dianalisis'
-                  : 'Gunakan kamera untuk mengambil foto tanaman dan AI kami akan menganalisis penyakit yang mungkin ada',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
+            // ===== HEADER WITH GREETING =====
+            Container(
               width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _scanFromCamera,
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Ambil Foto Kamera'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF16A34A),
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0284C7), Color(0xFF0EA5E9)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
+                  bottomRight: Radius.circular(32),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: OutlinedButton.icon(
-                onPressed: _isLoading ? null : _scanFromGallery,
-                icon: const Icon(Icons.image),
-                label: const Text('Pilih dari Galeri'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF16A34A),
-                  side: const BorderSide(color: Color(0xFF16A34A), width: 2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (_selectedImage != null)
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _simpanHasil,
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                      : const Icon(Icons.check_circle),
-                  label: Text(
-                    _isLoading ? 'Menganalisis...' : 'Analisis Sekarang',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0EA5E9),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            if (_selectedImage != null) const SizedBox(height: 12),
-            if (_selectedImage != null)
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton.icon(
-                  onPressed: _clearImage,
-                  icon: const Icon(Icons.close),
-                  label: const Text('Batal'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red, width: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            if (_selectedImage == null) const SizedBox(height: 32),
-            if (_selectedImage == null)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0EA5E9).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF0EA5E9),
-                    width: 1.5,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.lightbulb, color: Color(0xFF0EA5E9)),
-                        SizedBox(width: 8),
-                        Text(
-                          'Tips untuk Hasil Terbaik',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.eco_rounded, color: Colors.white, size: 28),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'rassyhvre',
                           style: TextStyle(
+                            fontSize: 26,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0EA5E9),
-                            fontSize: 14,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      '• Ambil foto pada kondisi cahaya yang cukup baik\n'
-                      '• Fokus pada bagian tanaman yang menunjukkan gejala\n'
-                      '• Pastikan foto jelas dan tidak blur\n'
-                      '• Hindari bayangan pada objek utama',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[700],
-                        height: 1.6,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.3),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.wb_sunny_rounded, color: Colors.amber, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              _getGreetingTime(),
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.info,
-                            size: 18,
-                            color: Colors.orange,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Hasil hanya valid jika confidence ≥ ${(minConfidence * 100).toStringAsFixed(0)}%',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.orange,
-                                fontWeight: FontWeight.w500,
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Halo, $userName! 👋',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Pantau kesehatan kebun anggur Anda hari ini',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ===== MAIN ACTION CARD (KLINIK TANAMAN) =====
+            Transform.translate(
+              offset: const Offset(0, -20),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0284C7).withValues(alpha: 0.15),
+                        blurRadius: 25,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: _selectedImage == null
+                      ? Column(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF0284C7), Color(0xFF10B981)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(Icons.healing_rounded, color: Colors.white, size: 28),
+                                ),
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Klinik Tanaman',
+                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Diagnosa penyakit daun anggur secara instan dengan AI',
+                                        style: TextStyle(fontSize: 13, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildScanButton(
+                                    icon: Icons.camera_alt_rounded,
+                                    label: 'Kamera',
+                                    color: const Color(0xFF0284C7),
+                                    onTap: _isLoading ? null : _scanFromCamera,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildScanButton(
+                                    icon: Icons.photo_library_rounded,
+                                    label: 'Galeri',
+                                    color: const Color(0xFF10B981),
+                                    onTap: _isLoading ? null : _scanFromGallery,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 200,
+                                child: kIsWeb
+                                    ? Image.network(_selectedImage!.path, fit: BoxFit.cover)
+                                    : Image.file(File(_selectedImage!.path), fit: BoxFit.cover),
                               ),
                             ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 52,
+                              child: ElevatedButton.icon(
+                                onPressed: _isLoading ? null : _simpanHasil,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0284C7),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  elevation: 0,
+                                ),
+                                icon: _isLoading
+                                    ? const SizedBox(
+                                        width: 20, height: 20,
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                      )
+                                    : const Icon(Icons.auto_awesome_rounded, size: 22),
+                                label: Text(
+                                  _isLoading ? 'AI sedang menganalisis...' : 'Diagnosa Sekarang',
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            TextButton.icon(
+                              onPressed: _isLoading ? null : _clearImage,
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text('Pilih Ulang Foto'),
+                              style: TextButton.styleFrom(foregroundColor: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+
+            // ===== SEASONAL INFO BANNER =====
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF10B981).withValues(alpha: 0.1),
+                      const Color(0xFF0284C7).withValues(alpha: 0.05),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Text('🍇', style: TextStyle(fontSize: 28)),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Musim Tanam Aktif',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF065F46)),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Perhatikan kelembapan daun. Periksa secara rutin untuk mencegah infeksi jamur.',
+                            style: TextStyle(fontSize: 12, color: Colors.black54),
                           ),
                         ],
                       ),
@@ -228,99 +312,233 @@ class _ScanScreenState extends State<ScanScreen> {
                   ],
                 ),
               ),
-            const SizedBox(height: 20),
+            ),
+
+            // ===== KAMUS PENYAKIT HEADER =====
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 28, 24, 0),
+              child: Row(
+                children: [
+                  Icon(Icons.menu_book_rounded, color: Color(0xFF0284C7), size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    'Kamus Penyakit Anggur',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  ),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 4, 24, 12),
+              child: Text('Geser untuk mempelajari penyakit umum →', style: TextStyle(fontSize: 13, color: Colors.grey)),
+            ),
+
+            // ===== HORIZONTAL DISEASE CAROUSEL =====
+            SizedBox(
+              height: 175,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(left: 20, right: 12),
+                physics: const BouncingScrollPhysics(),
+                itemCount: _diseases.length,
+                itemBuilder: (context, index) {
+                  final d = _diseases[index];
+                  return Container(
+                    width: 260,
+                    margin: const EdgeInsets.only(right: 14),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (d['color'] as Color).withValues(alpha: 0.12),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: (d['color'] as Color).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(d['icon'] as IconData, color: d['color'] as Color, size: 22),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                d['name'] as String,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: d['color'] as Color,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: Text(
+                            d['desc'] as String,
+                            style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.5),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // ===== TIPS HARIAN HEADER =====
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: Row(
+                children: [
+                  Icon(Icons.tips_and_updates_rounded, color: Color(0xFFEA580C), size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    'Tips Perawatan',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                  ),
+                ],
+              ),
+            ),
+
+            // ===== TIPS LIST =====
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+              child: Column(
+                children: _tips.map((tip) => _buildTipCard(tip)).toList(),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildScanButton({required IconData icon, required String label, required Color color, required VoidCallback? onTap}) {
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(width: 8),
+              Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 15)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTipCard(Map<String, String> tip) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(tip['icon']!, style: const TextStyle(fontSize: 28)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(tip['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B))),
+                const SizedBox(height: 4),
+                Text(tip['body']!, style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.5)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ======== CAMERA & GALLERY LOGIC (unchanged) ========
+
   Future<void> _scanFromCamera() async {
     try {
       final photo = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 80,
-        maxWidth: 800,
-        maxHeight: 800,
+        source: ImageSource.camera, imageQuality: 80, maxWidth: 800, maxHeight: 800,
       );
-      if (photo != null) {
-        setState(() {
-          _selectedImage = photo;
-        });
-      }
+      if (photo != null) setState(() => _selectedImage = photo);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   Future<void> _scanFromGallery() async {
     try {
       final photo = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 80,
-        maxWidth: 800,
-        maxHeight: 800,
+        source: ImageSource.gallery, imageQuality: 80, maxWidth: 800, maxHeight: 800,
       );
-      if (photo != null) {
-        setState(() {
-          _selectedImage = photo;
-        });
-      }
+      if (photo != null) setState(() => _selectedImage = photo);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   Future<void> _simpanHasil() async {
     if (_selectedImage == null) return;
-
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // Kirim gambar ke backend → AI server (YOLO)
       final result = await ApiService.predict(_selectedImage!);
-
       if (!mounted) return;
 
       final statusCode = result['statusCode'];
       final data = result['data'];
 
-      // Cek error dari server
       if (statusCode != 200 && statusCode != 201) {
-        final errorMsg = data['message'] ?? 'Prediksi gagal';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $errorMsg'),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-        setState(() {
-          _isLoading = false;
-        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${data['message'] ?? 'Prediksi gagal'}')));
+        setState(() => _isLoading = false);
         return;
       }
 
-      // Cek response dari API — data ada di data['data'] jika dari backend
       final prediction = data['data'] ?? data;
 
-      // Cek apakah gambar bukan daun anggur (filter YOLO)
       if (prediction['is_grape_leaf'] == false) {
         if (!mounted) return;
-        _showNotGrapeLeafDialog(
-          context,
-          prediction['message'] ?? 'Bukan daun anggur',
+        _showResultSheet(
+          title: 'Bukan Daun Anggur',
+          message: prediction['message'] ?? 'Gambar tidak terdeteksi sebagai daun anggur.',
+          icon: Icons.block_rounded,
+          iconColor: Colors.redAccent,
         );
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         return;
       }
 
@@ -328,10 +546,13 @@ class _ScanScreenState extends State<ScanScreen> {
 
       if (confidence < minConfidence) {
         if (!mounted) return;
-        _showInvalidDialog(context, confidence);
-        setState(() {
-          _isLoading = false;
-        });
+        _showResultSheet(
+          title: 'Akurasi Rendah',
+          message: 'AI hanya yakin ${(confidence * 100).toStringAsFixed(1)}%. Coba ambil foto yang lebih jelas.',
+          icon: Icons.warning_amber_rounded,
+          iconColor: Colors.orange,
+        );
+        setState(() => _isLoading = false);
         return;
       }
 
@@ -348,176 +569,71 @@ class _ScanScreenState extends State<ScanScreen> {
       );
 
       if (!mounted) return;
-      final provider = context.read<DeteksiProvider>();
-      await provider.addDeteksiResult(deteksiResult);
+      await context.read<DeteksiProvider>().addDeteksiResult(deteksiResult);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hasil deteksi berhasil disimpan!'),
-          duration: Duration(seconds: 2),
-        ),
+      _showResultSheet(
+        title: penyakit,
+        message: '$rekomendasi\n\nTingkat keyakinan: ${(confidence * 100).toStringAsFixed(1)}%',
+        icon: penyakit.toLowerCase() == 'healthy' ? Icons.check_circle_rounded : Icons.healing_rounded,
+        iconColor: penyakit.toLowerCase() == 'healthy' ? const Color(0xFF10B981) : const Color(0xFF0284C7),
       );
-
-      setState(() {
-        _selectedImage = null;
-      });
+      setState(() => _selectedImage = null);
     } on SocketException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Network Error: $e\nPastikan device terhubung ke jaringan yang sama dengan server.',
-          ),
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Network Error: $e')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showNotGrapeLeafDialog(BuildContext context, String message) {
-    showDialog(
+  void _showResultSheet({required String title, required String message, required IconData icon, required Color iconColor}) {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Bukan Daun Anggur'),
-        icon: const Icon(Icons.block, color: Colors.red, size: 32),
-        content: Column(
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              message,
-              style: const TextStyle(fontSize: 14),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 48, color: iconColor),
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pastikan:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '• Foto adalah daun anggur\n'
-                    '• Gambar jelas dan tidak blur\n'
-                    '• Pencahayaan cukup baik\n'
-                    '• Fokus pada daun anggur',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ],
+            Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.6)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: iconColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Coba Lagi'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _selectedImage = null;
-              });
-            },
-            child: const Text('Batal', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showInvalidDialog(BuildContext context, double confidence) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hasil Tidak Valid'),
-        icon: const Icon(Icons.error_outline, color: Colors.orange, size: 32),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Gambar yang diupload kemungkinan bukan tanaman atau kualitasnya tidak cukup baik.',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Confidence Score: ${(confidence * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Minimum required: ${(minConfidence * 100).toStringAsFixed(0)}%',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Pastikan:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '• Foto adalah tanaman anggur\n'
-              '• Gambar jelas dan tidak blur\n'
-              '• Pencahayaan cukup baik\n'
-              '• Fokus pada area yang menunjukkan gejala',
-              style: TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Coba Lagi'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _selectedImage = null;
-              });
-            },
-            child: const Text('Batal', style: TextStyle(color: Colors.red)),
-          ),
-        ],
       ),
     );
   }
@@ -525,21 +641,28 @@ class _ScanScreenState extends State<ScanScreen> {
   String _getRekomendasi(String penyakit) {
     switch (penyakit.toLowerCase()) {
       case 'black measles':
-        return 'Cabut dan bakar daun yang terinfeksi. Gunakan fungisida sulfur atau tembaga.';
+        return 'Cabut dan bakar daun terinfeksi. Gunakan fungisida sulfur atau tembaga secara berkala.';
       case 'black rot':
-        return 'Potong bagian yang membusuk. Berikan fungisida sistemik dan jaga ventilasi.';
+        return 'Potong bagian busuk dan berikan fungisida sistemik. Pastikan ventilasi kebun memadai.';
       case 'healthy':
-        return 'Tanaman sehat! Lanjutkan perawatan rutin dan monitoring teratur.';
+        return 'Tanaman Anda sehat! Pertahankan perawatan rutin dan monitoring berkala. 🌿';
       case 'isariopsis leaf spot':
-        return 'Singkirkan daun yang terkena. Aplikasikan fungisida dan jaga kelembaban optimal.';
+        return 'Singkirkan daun terkena. Aplikasikan fungisida dan jaga kelembaban agar tetap optimal.';
       default:
         return 'Konsultasi dengan ahli pertanian untuk penanganan lebih lanjut.';
     }
   }
 
+  String _getGreetingTime() {
+    final hour = DateTime.now().hour;
+    if (hour < 5) return 'Dini Hari';
+    if (hour < 11) return 'Pagi';
+    if (hour < 15) return 'Siang';
+    if (hour < 18) return 'Sore';
+    return 'Malam';
+  }
+
   void _clearImage() {
-    setState(() {
-      _selectedImage = null;
-    });
+    setState(() => _selectedImage = null);
   }
 }

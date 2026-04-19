@@ -3,6 +3,8 @@ const jwt = require("jsonwebtoken");
 const {
     createPengguna,
     getPenggunaByEmail,
+    getPenggunaById,
+    updateFotoProfil,
 } = require("../models/penggunaModel");
 
 const register = async (req, res) => {
@@ -36,7 +38,7 @@ const register = async (req, res) => {
         res.status(201).json({
             success: true,
             message: "Registrasi berhasil",
-            data: { id_pengguna, nama, email, role: "user", token },
+            data: { id_pengguna, nama, email, role: "user", foto_profil: null, token },
         });
     } catch (error) {
         res.status(500).json({
@@ -88,6 +90,7 @@ const login = async (req, res) => {
                 nama: user.nama,
                 email: user.email,
                 role: user.role || "user",
+                foto_profil: user.foto_profil || null,
                 token,
             },
         });
@@ -100,4 +103,52 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { register, login };
+const uploadProfilePhoto = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "File foto tidak ditemukan",
+            });
+        }
+
+        const userId = req.user.id;
+        const filename = req.file.filename;
+
+        await updateFotoProfil(userId, filename);
+
+        const updatedUser = await getPenggunaById(userId);
+
+        res.status(200).json({
+            success: true,
+            message: "Foto profil berhasil diperbarui",
+            data: {
+                id_pengguna: updatedUser.id_pengguna,
+                nama: updatedUser.nama,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                foto_profil: updatedUser.foto_profil,
+            },
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Gagal mengupload foto profil",
+            error: error.message,
+        });
+    }
+};
+
+const getProfile = async (req, res) => {
+    try {
+        const user = await getPenggunaById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User tidak ditemukan" });
+        }
+        res.json({ success: true, data: user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Gagal mengambil profil", error: error.message });
+    }
+};
+
+module.exports = { register, login, uploadProfilePhoto, getProfile };

@@ -32,10 +32,27 @@ const deletePengguna = async (id) => {
     await db.query("DELETE FROM pengguna WHERE id_pengguna = ?", [id]);
 };
 
+const getPenggunaById = async (id) => {
+    const [rows] = await db.query(
+        "SELECT id_pengguna, nama, email, role, foto_profil FROM pengguna WHERE id_pengguna = ?",
+        [id]
+    );
+    return rows[0];
+};
+
+const updateFotoProfil = async (id, filename) => {
+    await db.query(
+        "UPDATE pengguna SET foto_profil = ? WHERE id_pengguna = ?",
+        [filename, id]
+    );
+};
+
 module.exports = {
     createPengguna,
     getPenggunaByEmail,
     getAllPengguna,
     updatePengguna,
     deletePengguna,
+    getPenggunaById,
+    updateFotoProfil,
 };

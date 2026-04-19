@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import '../models/pengguna.dart';
 import '../services/api_service.dart';
@@ -26,6 +27,7 @@ class AuthProvider extends ChangeNotifier {
         nama: data['nama'] ?? '',
         email: data['email'] ?? '',
         role: data['role'] ?? 'user',
+        fotoProfil: data['foto_profil'],
       );
       notifyListeners();
     }
@@ -44,6 +46,7 @@ class AuthProvider extends ChangeNotifier {
           nama: data['nama'] ?? '',
           email: data['email'] ?? '',
           role: data['role'] ?? 'user',
+          fotoProfil: data['foto_profil'],
         );
         _isLoading = false;
         notifyListeners();
@@ -74,6 +77,7 @@ class AuthProvider extends ChangeNotifier {
           nama: data['nama'] ?? '',
           email: data['email'] ?? '',
           role: data['role'] ?? 'user',
+          fotoProfil: data['foto_profil'],
         );
         _isLoading = false;
         notifyListeners();
@@ -81,15 +85,38 @@ class AuthProvider extends ChangeNotifier {
       } else {
         _isLoading = false;
         notifyListeners();
-      return result['data']['message'] ?? 'Registrasi gagal';
+        return result['data']['message'] ?? 'Registrasi gagal';
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      print("API Error: $e");
+      return 'Error: $e';
     }
-  } catch (e) {
-    _isLoading = false;
-    notifyListeners();
-    print("API Error: $e");
-    return 'Error: $e';
   }
-}
+
+  Future<String?> updateProfilePhoto(XFile imageFile) async {
+    try {
+      final result = await ApiService.uploadProfilePhoto(imageFile);
+      if (result['statusCode'] == 200 && result['data']['success'] == true) {
+        final data = result['data']['data'];
+        _user = Pengguna(
+          idPengguna: data['id_pengguna'] ?? _user!.idPengguna,
+          nama: data['nama'] ?? _user!.nama,
+          email: data['email'] ?? _user!.email,
+          role: data['role'] ?? _user!.role,
+          fotoProfil: data['foto_profil'],
+        );
+        notifyListeners();
+        return null;
+      } else {
+        return result['data']['message'] ?? 'Gagal upload foto';
+      }
+    } catch (e) {
+      print("Upload photo error: $e");
+      return 'Error: $e';
+    }
+  }
 
   Future<void> logout() async {
     await ApiService.logout();
