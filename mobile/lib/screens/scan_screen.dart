@@ -3,11 +3,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../providers/deteksi_provider.dart';
 import '../providers/auth_provider.dart';
-import '../models/deteksi_result_model.dart';
+import '../models/deteksi_result_model.dart' show DeteksiResult, PenangananItem;
 import '../services/api_service.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -522,6 +520,47 @@ class _ScanScreenState extends State<ScanScreen> {
       final statusCode = result['statusCode'];
       final data = result['data'];
 
+      // Handle koneksi gagal (statusCode 0 dari _handleError)
+      if (statusCode == 0) {
+        if (!mounted) return;
+        _showResultSheet(
+          title: 'Koneksi Gagal',
+          message: data['message'] ?? 'Tidak dapat terhubung ke server.',
+          icon: Icons.wifi_off_rounded,
+          iconColor: Colors.red,
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Handle 401 - token expired
+      if (statusCode == 401) {
+        if (!mounted) return;
+        _showResultSheet(
+          title: 'Sesi Berakhir',
+          message: 'Silakan login ulang untuk melanjutkan.',
+          icon: Icons.lock_outline_rounded,
+          iconColor: Colors.orange,
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Cek apakah bukan daun anggur (bisa status 200 atau 400)
+      // Response bisa di data['data'] atau langsung di data (root)
+      final rawData = data['data'] ?? data;
+      if (rawData['is_grape_leaf'] == false) {
+        if (!mounted) return;
+        _showResultSheet(
+          title: 'Bukan Daun Anggur',
+          message: rawData['message'] ?? data['message'] ?? 'Gambar tidak terdeteksi sebagai daun anggur.',
+          icon: Icons.block_rounded,
+          iconColor: Colors.redAccent,
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
       if (statusCode != 200 && statusCode != 201) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${data['message'] ?? 'Prediksi gagal'}')));
         setState(() => _isLoading = false);
@@ -529,18 +568,6 @@ class _ScanScreenState extends State<ScanScreen> {
       }
 
       final prediction = data['data'] ?? data;
-
-      if (prediction['is_grape_leaf'] == false) {
-        if (!mounted) return;
-        _showResultSheet(
-          title: 'Bukan Daun Anggur',
-          message: prediction['message'] ?? 'Gambar tidak terdeteksi sebagai daun anggur.',
-          icon: Icons.block_rounded,
-          iconColor: Colors.redAccent,
-        );
-        setState(() => _isLoading = false);
-        return;
-      }
 
       final confidence = (prediction['confidence'] ?? 0.0).toDouble();
 
@@ -556,32 +583,32 @@ class _ScanScreenState extends State<ScanScreen> {
         return;
       }
 
-      final penyakit = prediction['penyakit'] ?? 'Tidak diketahui';
-      final rekomendasi = _getRekomendasi(penyakit);
-
-      final deteksiResult = DeteksiResult(
-        imagePath: _selectedImage!.path,
-        namaGambar: _selectedImage!.path.split('/').last,
-        resultPenyakit: penyakit,
-        confidence: confidence,
-        rekomendasi: rekomendasi,
-        waktu: DateTime.now(),
+      // Gunakan factory yang parse penanganan dari database
+      final deteksiResult = DeteksiResult.fromPredictResponse(
+        prediction: prediction,
+        localImagePath: _selectedImage!.path,
       );
 
       if (!mounted) return;
       await context.read<DeteksiProvider>().addDeteksiResult(deteksiResult);
 
       if (!mounted) return;
-      _showResultSheet(
-        title: penyakit,
-        message: '$rekomendasi\n\nTingkat keyakinan: ${(confidence * 100).toStringAsFixed(1)}%',
-        icon: penyakit.toLowerCase() == 'healthy' ? Icons.check_circle_rounded : Icons.healing_rounded,
-        iconColor: penyakit.toLowerCase() == 'healthy' ? const Color(0xFF10B981) : const Color(0xFF0284C7),
+      final penyakit = deteksiResult.resultPenyakit ?? 'Tidak diketahui';
+      _showDiagnosisSheet(
+        penyakit: penyakit,
+        confidence: confidence,
+        penanganan: deteksiResult.penanganan,
+        isHealthy: penyakit.toLowerCase() == 'healthy',
       );
       setState(() => _selectedImage = null);
     } on SocketException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Network Error: $e')));
+      _showResultSheet(
+        title: 'Koneksi Gagal',
+        message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.\n\nDetail: $e',
+        icon: Icons.wifi_off_rounded,
+        iconColor: Colors.red,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -590,6 +617,7 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
+  /// Bottom sheet sederhana untuk error/warning (tanpa penanganan)
   void _showResultSheet({required String title, required String message, required IconData icon, required Color iconColor}) {
     showModalBottomSheet(
       context: context,
@@ -638,19 +666,136 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  String _getRekomendasi(String penyakit) {
-    switch (penyakit.toLowerCase()) {
-      case 'black measles':
-        return 'Cabut dan bakar daun terinfeksi. Gunakan fungisida sulfur atau tembaga secara berkala.';
-      case 'black rot':
-        return 'Potong bagian busuk dan berikan fungisida sistemik. Pastikan ventilasi kebun memadai.';
-      case 'healthy':
-        return 'Tanaman Anda sehat! Pertahankan perawatan rutin dan monitoring berkala. 🌿';
-      case 'isariopsis leaf spot':
-        return 'Singkirkan daun terkena. Aplikasikan fungisida dan jaga kelembaban agar tetap optimal.';
-      default:
-        return 'Konsultasi dengan ahli pertanian untuk penanganan lebih lanjut.';
-    }
+  /// Bottom sheet hasil diagnosa dengan penanganan dari database
+  void _showDiagnosisSheet({
+    required String penyakit,
+    required double confidence,
+    required List<PenangananItem> penanganan,
+    required bool isHealthy,
+  }) {
+    final iconColor = isHealthy ? const Color(0xFF10B981) : const Color(0xFF0284C7);
+    final icon = isHealthy ? Icons.check_circle_rounded : Icons.healing_rounded;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.35,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: ListView(
+            controller: scrollController,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 48, color: iconColor),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(penyakit, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              Text(
+                'Tingkat keyakinan: ${(confidence * 100).toStringAsFixed(1)}%',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 20),
+
+              // Penanganan dari database
+              if (penanganan.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.25)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.healing_rounded, color: Color(0xFF10B981), size: 20),
+                          SizedBox(width: 8),
+                          Text('Penanganan (dari database)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF065F46))),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ...penanganan.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final step = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 24, height: 24,
+                                decoration: BoxDecoration(color: const Color(0xFF10B981), borderRadius: BorderRadius.circular(7)),
+                                child: Center(child: Text('${i + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(step.judulPenanganan, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const SizedBox(height: 2),
+                                    Text(step.deskripsiPenanganan, style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.5)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ] else if (isHealthy) ...[
+                Text(
+                  'Tanaman Anda sehat! Pertahankan perawatan rutin dan monitoring berkala. 🌿',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.6),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: iconColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _getGreetingTime() {

@@ -4,7 +4,8 @@ const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        // Fallback untuk testing Mobile yang tidak memiliki UI Login
+        // Tidak ada header Authorization -> guest fallback untuk testing
+        console.log("[Auth] No auth header, using guest fallback (id: 1)");
         req.user = { id: 1 };
         return next();
     }
@@ -16,9 +17,12 @@ const verifyToken = (req, res, next) => {
         req.user = decoded;
         next();
     } catch (error) {
-        // Fallback jika token expired untuk testing cepat
-        req.user = { id: 1 };
-        return next();
+        console.error(`[Auth] Token error: ${error.message}`);
+        // Token ada tapi invalid/expired -> return 401
+        return res.status(401).json({
+            success: false,
+            message: "Token tidak valid atau sudah kadaluarsa. Silakan login ulang.",
+        });
     }
 };
 

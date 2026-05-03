@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String baseUrl = 'http://192.168.4.21:5000';
+  static const String baseUrl = 'http://192.168.1.11:5000';
   static const String apiUrl = '$baseUrl/api';
   static const String uploadsUrl = '$baseUrl/uploads';
 

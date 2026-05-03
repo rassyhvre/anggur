@@ -39,7 +39,16 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final result = await ApiService.login(email, password);
-      if (result['statusCode'] == 200) {
+      final statusCode = result['statusCode'];
+
+      if (statusCode == 0) {
+        // Koneksi gagal
+        _isLoading = false;
+        notifyListeners();
+        return result['data']['message'] ?? 'Tidak dapat terhubung ke server';
+      }
+
+      if (statusCode == 200) {
         final data = result['data']['data'];
         _user = Pengguna(
           idPengguna: data['id_pengguna'] ?? 0,
@@ -59,8 +68,8 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      print("API Error: $e");
-      return 'Error: $e';
+      print("[AuthProvider] Login error: $e");
+      return 'Tidak dapat terhubung ke server. Pastikan backend berjalan.';
     }
   }
 
@@ -70,7 +79,15 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final result = await ApiService.register(nama, email, password);
-      if (result['statusCode'] == 201) {
+      final statusCode = result['statusCode'];
+
+      if (statusCode == 0) {
+        _isLoading = false;
+        notifyListeners();
+        return result['data']['message'] ?? 'Tidak dapat terhubung ke server';
+      }
+
+      if (statusCode == 201) {
         final data = result['data']['data'];
         _user = Pengguna(
           idPengguna: data['id_pengguna'] ?? 0,
@@ -90,8 +107,8 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      print("API Error: $e");
-      return 'Error: $e';
+      print("[AuthProvider] Register error: $e");
+      return 'Tidak dapat terhubung ke server. Pastikan backend berjalan.';
     }
   }
 

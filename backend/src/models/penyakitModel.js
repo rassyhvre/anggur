@@ -11,7 +11,7 @@ const getPenyakitById = async (id) => {
 };
 
 const getPenyakitByNama = async (namaPenyakit) => {
-    const [rows] = await db.query("SELECT * FROM penyakit WHERE nama_penyakit = ?", [namaPenyakit]);
+    const [rows] = await db.query("SELECT * FROM penyakit WHERE LOWER(nama_penyakit) = LOWER(?)", [namaPenyakit]);
     return rows[0];
 };
 

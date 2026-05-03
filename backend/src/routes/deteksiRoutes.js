@@ -4,31 +4,6 @@ const deteksiController = require("../controllers/deteksiController");
 const upload = require("../middlewares/uploadMiddleware");
 const { verifyToken } = require("../middlewares/authMiddleware");
 
-router.post("/upload", upload.single("gambar"), (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                message: "File gambar tidak ditemukan",
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Upload gambar berhasil",
-            data: {
-                filename: req.file.filename,
-                path: `uploads/${req.file.filename}`,
-            },
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Upload gambar gagal",
-            error: error.message,
-        });
-    }
-});
 
 router.post("/predict", verifyToken, upload.single("file"), deteksiController.deteksiAI);
 

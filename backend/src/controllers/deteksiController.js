@@ -105,8 +105,8 @@ const deteksiAI = async (req, res) => {
 
         // 2. Cek apakah gambar adalah daun anggur (filter model)
         if (aiResult.is_grape_leaf === false) {
-            return res.status(400).json({
-                success: false,
+            return res.status(200).json({
+                success: true,
                 is_grape_leaf: false,
                 filter_confidence: aiResult.filter_confidence,
                 message: aiResult.message || "Gambar yang diunggah bukan daun anggur. Silakan unggah foto daun anggur untuk deteksi penyakit.",
@@ -114,9 +114,11 @@ const deteksiAI = async (req, res) => {
         }
 
         // 3. Cari id_penyakit berdasarkan nama dari AI
+        console.log(`[deteksiAI] AI result penyakit: "${aiResult.penyakit}", confidence: ${aiResult.confidence}`);
         const penyakit = await getPenyakitByNama(aiResult.penyakit);
 
         if (!penyakit) {
+            console.error(`[deteksiAI] Penyakit "${aiResult.penyakit}" tidak ditemukan di database!`);
             return res.status(404).json({
                 success: false,
                 message: `Penyakit "${aiResult.penyakit}" tidak ditemukan di database`,
@@ -146,6 +148,7 @@ const deteksiAI = async (req, res) => {
             },
         });
     } catch (error) {
+        console.error("[deteksiAI] Error:", error.message);
         res.status(500).json({
             success: false,
             message: "Deteksi gagal",
