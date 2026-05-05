@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import AdminNavbar from "./components/AdminNavbar";
+import FallingLeaves from "./components/FallingLeaves";
 import HomePage from "./views/home/HomePage";
 import ScanPage from "./views/scan/ScanPage";
 import RiwayatPage from "./views/riwayat/RiwayatPage";
@@ -31,7 +32,7 @@ function AdminLayout() {
     return (
         <>
             <AdminNavbar />
-            <div style={{ paddingTop: "56px", minHeight: "100vh", background: "#f1f5f9" }}>
+            <div style={{ paddingTop: "64px", minHeight: "100vh", background: "#f1f5f9" }}>
                 <Routes>
                     <Route index element={<AdminDashboard />} />
                     <Route path="pengguna" element={<PenggunaAdmin />} />
@@ -48,7 +49,13 @@ function PublicLayout() {
     return (
         <>
             <Navbar />
-            <div style={{ paddingTop: "64px" }}>
+            {/* Global falling grape leaves animation — visible on ALL public pages */}
+            <FallingLeaves
+                count={16}
+                mobileCount={8}
+                showToggle={true}
+            />
+            <div style={{ position: "relative", zIndex: 3 }}>
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/scan" element={<ScanPage />} />
