@@ -125,7 +125,17 @@ const deteksiAI = async (req, res) => {
             });
         }
 
-        // 4. Simpan hasil deteksi ke database
+        // 4. Validasi pengguna masih ada di database
+        const { getPenggunaById } = require("../models/penggunaModel");
+        const pengguna = await getPenggunaById(req.user.id);
+        if (!pengguna) {
+            return res.status(401).json({
+                success: false,
+                message: "Sesi tidak valid. Silakan logout dan login ulang.",
+            });
+        }
+
+        // 5. Simpan hasil deteksi ke database
         const id_deteksi = await createHasilDeteksi({
             id_pengguna: req.user.id,
             id_penyakit: penyakit.id_penyakit,

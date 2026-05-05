@@ -31,7 +31,7 @@ export const detectDisease = async (file) => {
     const formData = new FormData();
     formData.append("file", file);
     const response = await api.post("/api/deteksi/predict", formData);
-    return response.data.data;
+    return response.data;
 };
 
 // Riwayat
