@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
+import 'dart:async';
 import '../providers/deteksi_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/deteksi_result_model.dart' show DeteksiResult, PenangananItem;
@@ -512,6 +513,7 @@ class _ScanScreenState extends State<ScanScreen> {
   Future<void> _simpanHasil() async {
     if (_selectedImage == null) return;
     setState(() => _isLoading = true);
+    _showScanLoadingDialog();
 
     try {
       final result = await ApiService.predict(_selectedImage!);
@@ -519,6 +521,9 @@ class _ScanScreenState extends State<ScanScreen> {
 
       final statusCode = result['statusCode'];
       final data = result['data'];
+
+      // Dismiss loading dialog
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
 
       // Handle koneksi gagal (statusCode 0 dari _handleError)
       if (statusCode == 0) {
@@ -602,6 +607,7 @@ class _ScanScreenState extends State<ScanScreen> {
       );
       setState(() => _selectedImage = null);
     } on SocketException catch (e) {
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
       if (!mounted) return;
       _showResultSheet(
         title: 'Koneksi Gagal',
@@ -610,11 +616,21 @@ class _ScanScreenState extends State<ScanScreen> {
         iconColor: Colors.red,
       );
     } catch (e) {
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showScanLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (_) => const _ScanLoadingDialog(),
+    );
   }
 
   /// Bottom sheet sederhana untuk error/warning (tanpa penanganan)
@@ -809,5 +825,168 @@ class _ScanScreenState extends State<ScanScreen> {
 
   void _clearImage() {
     setState(() => _selectedImage = null);
+  }
+}
+
+// ==================== LOADING DIALOG ====================
+class _ScanLoadingDialog extends StatefulWidget {
+  const _ScanLoadingDialog();
+  @override
+  State<_ScanLoadingDialog> createState() => _ScanLoadingDialogState();
+}
+
+class _ScanLoadingDialogState extends State<_ScanLoadingDialog> with TickerProviderStateMixin {
+  late final AnimationController _spinController;
+  late final AnimationController _pulseController;
+  late final AnimationController _scanLineController;
+  int _msgIndex = 0;
+  Timer? _msgTimer;
+
+  static const _messages = [
+    'Mengunggah gambar...',
+    'AI sedang menganalisis daun...',
+    'Mendeteksi pola penyakit...',
+    'Mencocokkan dengan database...',
+    'Menyiapkan hasil diagnosis...',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _spinController = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
+    _scanLineController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
+    _msgTimer = Timer.periodic(const Duration(milliseconds: 2200), (_) {
+      if (mounted) setState(() => _msgIndex = (_msgIndex + 1) % _messages.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _spinController.dispose();
+    _pulseController.dispose();
+    _scanLineController.dispose();
+    _msgTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 40),
+          padding: const EdgeInsets.fromLTRB(32, 40, 32, 32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 40, offset: const Offset(0, 16)),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Animated leaf scanner
+              SizedBox(
+                width: 120, height: 120,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Pulse ring
+                    AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (_, __) {
+                        final scale = 1.0 + _pulseController.value * 1.0;
+                        final opacity = 1.0 - _pulseController.value;
+                        return Transform.scale(
+                          scale: scale,
+                          child: Container(
+                            width: 90, height: 90,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: opacity * 0.4), width: 2),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // Leaf circle
+                    Container(
+                      width: 90, height: 90,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFDCFCE7), Color(0xFFBBF7D0)],
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [BoxShadow(color: const Color(0xFF16A34A).withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 6))],
+                      ),
+                      child: AnimatedBuilder(
+                        animation: _spinController,
+                        builder: (_, child) => Transform.rotate(
+                          angle: _spinController.value * 6.28,
+                          child: child,
+                        ),
+                        child: const Center(child: Text('🍃', style: TextStyle(fontSize: 42, decoration: TextDecoration.none))),
+                      ),
+                    ),
+                    // Scan line
+                    AnimatedBuilder(
+                      animation: _scanLineController,
+                      builder: (_, __) {
+                        final top = 10.0 + _scanLineController.value * 96.0;
+                        return Positioned(
+                          top: top, left: 10, right: 10,
+                          child: Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(2),
+                              gradient: const LinearGradient(
+                                colors: [Colors.transparent, Color(0xFF16A34A), Colors.transparent],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              // Progress bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: SizedBox(
+                  height: 5, width: double.infinity,
+                  child: LinearProgressIndicator(
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    valueColor: const AlwaysStoppedAnimation(Color(0xFF16A34A)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Message
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                child: Text(
+                  _messages[_msgIndex],
+                  key: ValueKey(_msgIndex),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), decoration: TextDecoration.none),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Mohon tunggu beberapa detik',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8), decoration: TextDecoration.none),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

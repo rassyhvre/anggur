@@ -6,6 +6,8 @@ import UploadArea from "../home/components/UploadArea";
 import CameraCapture from "../home/components/CameraCapture";
 import ImagePreview from "../home/components/ImagePreview";
 import DetectionResult from "../home/components/DetectionResult";
+import CropModal from "../home/components/CropModal";
+import ScanLoadingOverlay from "../../components/ScanLoadingOverlay";
 
 function ScanPage() {
     const [file, setFile] = useState(null);
@@ -16,45 +18,76 @@ function ScanPage() {
     const [showCamera, setShowCamera] = useState(false);
     const [filterRejected, setFilterRejected] = useState(null);
 
+    // Crop states
+    const [showCropModal, setShowCropModal] = useState(false);
+    const [rawImageSrc, setRawImageSrc] = useState(null);
+
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
-        setFile(selectedFile);
-        setResult(null);
-        setFilterRejected(null);
-        setPreview(selectedFile ? URL.createObjectURL(selectedFile) : null);
+        if (selectedFile) {
+            setRawImageSrc(URL.createObjectURL(selectedFile));
+            setShowCropModal(true);
+        }
     };
 
     const handleCapture = (capturedFile, previewUrl) => {
-        setFile(capturedFile);
+        setRawImageSrc(previewUrl);
+        setShowCropModal(true);
+        setShowCamera(false);
+    };
+
+    const handleCropComplete = (croppedFile, previewUrl) => {
+        setFile(croppedFile);
         setPreview(previewUrl);
         setResult(null);
         setFilterRejected(null);
-        setShowCamera(false);
+        setShowCropModal(false);
+        setRawImageSrc(null);
+    };
+
+    const handleCropCancel = () => {
+        setShowCropModal(false);
+        setRawImageSrc(null);
     };
 
     const handleSubmit = async () => {
         if (!file) return alert("Pilih atau foto gambar terlebih dahulu");
         const token = localStorage.getItem("token");
         if (!token) return alert("Silakan login terlebih dahulu untuk melakukan deteksi");
+        
         try {
             setLoading(true);
             setFilterRejected(null);
-            const data = await detectDisease(file);
-            setResult(data);
+            
+            // Kirim gambar hasil crop (file) ke backend yang menjalankan super_leaf_model.keras
+            const responseData = await detectDisease(file);
+            
+            // Jika backend memvonis gambar ini bukan daun anggur
+            if (responseData.is_grape_leaf === false) {
+                setFilterRejected({
+                    message: responseData.message || "Gambar terdeteksi bukan daun anggur.",
+                    filter_confidence: responseData.filter_confidence || 0,
+                });
+            } else {
+                // Jika daun valid, tampilkan hasilnya
+                setResult(responseData.data);
+            }
         } catch (error) {
             console.error(error);
-            // Cek apakah error dari filter model (bukan daun anggur)
-            if (error.response?.status === 400 && error.response?.data?.is_grape_leaf === false) {
+            // Tetap tangkap jika backend melempar 400
+            if (error.response?.status === 400 || (error.response?.status === 200 && error.response?.data?.is_grape_leaf === false)) {
                 setFilterRejected({
-                    message: error.response.data.message,
-                    filter_confidence: error.response.data.filter_confidence,
+                    message: error.response?.data?.message || "Gambar terdeteksi bukan daun anggur.",
+                    filter_confidence: error.response?.data?.filter_confidence || 0,
                 });
             } else if (error.response?.status === 401) {
                 alert("Sesi berakhir. Silakan login kembali.");
             } else {
                 alert("Gagal melakukan deteksi. Pastikan server berjalan.");
             }
-        } finally { setLoading(false); }
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     const resetAll = () => {
@@ -75,7 +108,7 @@ function ScanPage() {
                 <h1 style={p.title}>Scan Penyakit Tanaman Anggur</h1>
                 <p style={p.subtitle}>
                     Unggah atau ambil foto daun anggur Anda, dan dapatkan diagnosis beserta
-                    rekomendasi penanganan secara instan.
+                    rekomendasi penanganan secara instan dari server kami.
                 </p>
             </section>
 
@@ -87,6 +120,16 @@ function ScanPage() {
                         <ModeTabs mode={mode} onSwitchMode={switchMode} />
                         {mode === "upload" && <UploadArea onFileChange={handleFileChange} />}
                         {mode === "camera" && showCamera && <CameraCapture onCapture={handleCapture} />}
+                        
+                        {/* Modal Crop */}
+                        {showCropModal && rawImageSrc && (
+                            <CropModal 
+                                imageSrc={rawImageSrc} 
+                                onCropComplete={handleCropComplete} 
+                                onCancel={handleCropCancel} 
+                            />
+                        )}
+
                         <ImagePreview preview={preview} />
                         {file && !result && !filterRejected && (
                             <div style={styles.actions}>
@@ -96,6 +139,9 @@ function ScanPage() {
                                 </button>
                             </div>
                         )}
+
+                        {/* Loading Overlay */}
+                        <ScanLoadingOverlay visible={loading} />
 
                         {/* Filter Rejection Card */}
                         {filterRejected && (
@@ -155,11 +201,10 @@ function ScanPage() {
 
                     {/* Filter Info Card */}
                     <div style={{ ...p.infoCard, background: "#fefce8", borderColor: "#fef08a" }}>
-                        <h3 style={{ ...p.infoTitle, color: "#854d0e" }}>🛡️ Filter Cerdas YOLO</h3>
+                        <h3 style={{ ...p.infoTitle, color: "#854d0e" }}>🛡️ Super Leaf AI</h3>
                         <p style={{ fontSize: "14px", color: "#713f12", lineHeight: 1.7, margin: 0 }}>
-                            Sistem kami menggunakan model <strong>YOLO</strong> yang secara otomatis mendeteksi dan mengklasifikasikan
-                            penyakit pada <strong>daun anggur</strong>. Jika tidak terdeteksi daun anggur pada gambar,
-                            maka gambar akan otomatis ditolak.
+                            Sistem kami menggunakan model <strong>super_leaf_model.keras</strong> di server yang secara otomatis mendeteksi dan mengklasifikasikan
+                            penyakit pada <strong>daun anggur</strong>.
                         </p>
                     </div>
 
