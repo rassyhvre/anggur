@@ -40,6 +40,11 @@ export const getRiwayat = async () => {
     return response.data.data;
 };
 
+export const getDeteksiDetail = async (id) => {
+    const response = await api.get(`/api/deteksi/${id}`);
+    return response.data.data;
+};
+
 // ============ ADMIN API ============
 // Pengguna
 export const adminGetPengguna = async () => (await api.get("/api/admin/pengguna")).data.data;

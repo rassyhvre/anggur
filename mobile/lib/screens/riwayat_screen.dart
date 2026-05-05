@@ -242,6 +242,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                                 style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                                               ),
                                             ),
+                                            // Detail link
+                                            const Text(
+                                              'Detail',
+                                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
+                                            ),
+                                            const Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFF0284C7)),
+                                            const SizedBox(width: 8),
                                             // Delete button
                                             GestureDetector(
                                               onTap: () async {

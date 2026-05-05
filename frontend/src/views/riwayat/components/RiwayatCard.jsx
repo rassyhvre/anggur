@@ -1,6 +1,11 @@
-function RiwayatCard({ item }) {
+function RiwayatCard({ item, onClick }) {
     return (
-        <div style={c.card}>
+        <div 
+            style={c.card} 
+            onClick={onClick}
+            onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 8px 24px -4px rgba(0,0,0,0.08)"}
+            onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
+        >
             <img
                 src={`http://localhost:5000/uploads/${item.gambar_upload}`}
                 alt="Hasil deteksi"
@@ -20,6 +25,9 @@ function RiwayatCard({ item }) {
                     </span>
                 </div>
             </div>
+            <div style={c.action}>
+                <span style={c.detailBtn}>Detail →</span>
+            </div>
         </div>
     );
 }
@@ -34,6 +42,7 @@ const c = {
         borderRadius: "14px",
         padding: "14px",
         transition: "box-shadow 0.2s",
+        cursor: "pointer",
     },
     img: {
         width: "72px", height: "72px",
@@ -52,6 +61,11 @@ const c = {
     confidence: { color: "#16a34a", fontWeight: "600" },
     dot: { color: "#d1d5db" },
     tanggal: {},
+    action: { paddingLeft: "12px" },
+    detailBtn: { 
+        fontSize: "12px", fontWeight: "700", color: "#16a34a", 
+        background: "#f0fdf4", padding: "6px 12px", borderRadius: "8px" 
+    },
 };
 
 export default RiwayatCard;

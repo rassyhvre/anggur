@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRiwayat } from "../../services/api";
 import RiwayatCard from "./components/RiwayatCard";
+import RiwayatDetailModal from "./components/RiwayatDetailModal";
 
 function RiwayatPage() {
     const [riwayat, setRiwayat] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedId, setSelectedId] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -47,9 +49,18 @@ function RiwayatPage() {
 
                 <div style={s.list}>
                     {riwayat.map((item) => (
-                        <RiwayatCard key={item.id_deteksi} item={item} />
+                        <RiwayatCard 
+                            key={item.id_deteksi} 
+                            item={item} 
+                            onClick={() => setSelectedId(item.id_deteksi)}
+                        />
                     ))}
                 </div>
+
+                <RiwayatDetailModal 
+                    id={selectedId} 
+                    onClose={() => setSelectedId(null)} 
+                />
             </div>
 
             <footer style={s.footer}>
