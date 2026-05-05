@@ -1,11 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 function Navbar() {
     const navigate = useNavigate();
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "null");
     const [menuOpen, setMenuOpen] = useState(false);
+    const [user, setUser] = useState(JSON.parse(localStorage.getItem("user") || "null"));
+    const token = localStorage.getItem("token");
+
+    useEffect(() => {
+        const handleStorage = () => {
+            setUser(JSON.parse(localStorage.getItem("user") || "null"));
+        };
+        window.addEventListener("storage", handleStorage);
+        // Interval check as backup for same-window changes
+        const interval = setInterval(handleStorage, 1000);
+        return () => {
+            window.removeEventListener("storage", handleStorage);
+            clearInterval(interval);
+        };
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -89,7 +102,21 @@ function Navbar() {
                             {user.role === "admin" && (
                                 <button onClick={() => { navigate("/admin"); closeMenu(); }} style={s.adminBtn}>Admin</button>
                             )}
-                            <div style={s.avatar}>{user.nama?.charAt(0).toUpperCase()}</div>
+                            <div 
+                                style={s.avatar} 
+                                onClick={() => { navigate("/profile"); closeMenu(); }}
+                                title="Pengaturan Profil"
+                            >
+                                {user.foto_profil ? (
+                                    <img 
+                                        src={`http://localhost:5000/uploads/${user.foto_profil}`} 
+                                        alt="" 
+                                        style={s.avatarImg} 
+                                    />
+                                ) : (
+                                    user.nama?.charAt(0).toUpperCase()
+                                )}
+                            </div>
                             <button onClick={() => { handleLogout(); closeMenu(); }} style={s.logoutBtn}>Keluar</button>
                         </div>
                     ) : (
@@ -165,6 +192,13 @@ const s = {
         justifyContent: "center",
         fontSize: "13px",
         fontWeight: "600",
+        cursor: "pointer",
+        overflow: "hidden",
+    },
+    avatarImg: {
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
     },
     loginBtn: {
         padding: "7px 18px",

@@ -5,6 +5,7 @@ import HomePage from "./views/home/HomePage";
 import ScanPage from "./views/scan/ScanPage";
 import RiwayatPage from "./views/riwayat/RiwayatPage";
 import TentangPage from "./views/tentang/TentangPage";
+import ProfilePage from "./views/profile/ProfilePage";
 import LoginPage from "./views/auth/LoginPage";
 import RegisterPage from "./views/auth/RegisterPage";
 import AdminDashboard from "./views/admin/AdminDashboard";
@@ -56,6 +57,7 @@ function PublicLayout() {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/riwayat" element={<ProtectedRoute><RiwayatPage /></ProtectedRoute>} />
+                    <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 </Routes>
             </div>
         </>

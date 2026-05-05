@@ -26,6 +26,18 @@ export const loginUser = async (email, password) => {
     return response.data;
 };
 
+export const getProfile = async () => {
+    const response = await api.get("/api/auth/profile");
+    return response.data;
+};
+
+export const updateProfilePhoto = async (file) => {
+    const formData = new FormData();
+    formData.append("photo", file);
+    const response = await api.post("/api/auth/profile/photo", formData);
+    return response.data;
+};
+
 // Deteksi
 export const detectDisease = async (file) => {
     const formData = new FormData();
