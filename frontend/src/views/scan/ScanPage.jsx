@@ -39,17 +39,20 @@ function ScanPage() {
         try {
             setLoading(true);
             setFilterRejected(null);
-            const data = await detectDisease(file);
-            setResult(data);
+            const res = await detectDisease(file);
+
+            // Cek apakah gambar bukan daun anggur (filter model)
+            if (res.is_grape_leaf === false) {
+                setFilterRejected({
+                    message: res.message,
+                    filter_confidence: res.filter_confidence,
+                });
+            } else {
+                setResult(res.data);
+            }
         } catch (error) {
             console.error(error);
-            // Cek apakah error dari filter model (bukan daun anggur)
-            if (error.response?.status === 400 && error.response?.data?.is_grape_leaf === false) {
-                setFilterRejected({
-                    message: error.response.data.message,
-                    filter_confidence: error.response.data.filter_confidence,
-                });
-            } else if (error.response?.status === 401) {
+            if (error.response?.status === 401) {
                 alert("Sesi berakhir. Silakan login kembali.");
             } else {
                 alert("Gagal melakukan deteksi. Pastikan server berjalan.");
@@ -155,9 +158,9 @@ function ScanPage() {
 
                     {/* Filter Info Card */}
                     <div style={{ ...p.infoCard, background: "#fefce8", borderColor: "#fef08a" }}>
-                        <h3 style={{ ...p.infoTitle, color: "#854d0e" }}>🛡️ Filter Cerdas YOLO</h3>
+                        <h3 style={{ ...p.infoTitle, color: "#854d0e" }}>🛡️ Filter Cerdas CNN</h3>
                         <p style={{ fontSize: "14px", color: "#713f12", lineHeight: 1.7, margin: 0 }}>
-                            Sistem kami menggunakan model <strong>YOLO</strong> yang secara otomatis mendeteksi dan mengklasifikasikan
+                            Sistem kami menggunakan model <strong>CNN (Convolutional Neural Network)</strong> yang secara otomatis mendeteksi dan mengklasifikasikan
                             penyakit pada <strong>daun anggur</strong>. Jika tidak terdeteksi daun anggur pada gambar,
                             maka gambar akan otomatis ditolak.
                         </p>
@@ -168,7 +171,7 @@ function ScanPage() {
                         <h3 style={p.infoTitle}>Tentang Model AI</h3>
                         <div style={p.statsGrid}>
                             <div style={p.statItem}>
-                                <p style={p.statVal}>YOLOv8</p>
+                                <p style={p.statVal}>CNN</p>
                                 <p style={p.statLabel}>Arsitektur</p>
                             </div>
                             <div style={p.statItem}>
@@ -192,7 +195,7 @@ function ScanPage() {
                         <div style={p.stepsList}>
                             {[
                                 "Upload atau foto daun anggur",
-                                "YOLO mendeteksi & mengklasifikasi penyakit",
+                                "CNN menganalisis & mengklasifikasi penyakit",
                                 "Jika bukan daun anggur, gambar ditolak",
                                 "Hasil diagnosis & rekomendasi ditampilkan",
                             ].map((step, i) => (
@@ -210,17 +213,19 @@ function ScanPage() {
 }
 
 const p = {
-    wrapper: { minHeight: "100vh", background: "#f8fafc" },
+    wrapper: { minHeight: "100vh", background: "#fafbfc" },
     header: {
         textAlign: "center",
-        padding: "90px 24px 60px",
-        background: "linear-gradient(180deg, #f0fdf4 0%, #f8fafc 100%)",
+        padding: "100px 24px 60px",
+        background: "linear-gradient(180deg, #f0fdf4 0%, #fafbfc 100%)",
+        position: "relative", overflow: "hidden",
     },
     label: {
-        display: "inline-block", padding: "6px 16px", background: "#dcfce7", color: "#16a34a",
-        fontSize: "13px", fontWeight: "700", borderRadius: "20px", letterSpacing: "1px", marginBottom: "16px"
+        display: "inline-block", padding: "7px 18px",
+        background: "linear-gradient(135deg, #dcfce7, #bbf7d0)", color: "#15803d",
+        fontSize: "13px", fontWeight: "800", borderRadius: "20px", letterSpacing: "1.5px", marginBottom: "18px",
     },
-    title: { fontSize: "42px", fontWeight: "800", color: "#0f172a", margin: "0 0 20px", letterSpacing: "-0.5px" },
+    title: { fontSize: "42px", fontWeight: "800", color: "#0f172a", margin: "0 0 20px", letterSpacing: "-0.8px" },
     subtitle: {
         fontSize: "18px", color: "#64748b", maxWidth: "600px",
         margin: "0 auto", lineHeight: 1.8,
@@ -234,7 +239,7 @@ const p = {
     scanCard: {
         background: "#ffffff", border: "1px solid rgba(0,0,0,0.04)",
         borderRadius: "24px", padding: "32px",
-        boxShadow: "0 20px 40px -15px rgba(0,0,0,0.05)",
+        boxShadow: "0 12px 32px -8px rgba(0,0,0,0.06)",
     },
     infoCol: { display: "flex", flexDirection: "column", gap: "24px" },
     infoCard: {

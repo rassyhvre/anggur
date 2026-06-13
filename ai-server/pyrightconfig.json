@@ -1,0 +1,7 @@
+{
+    "pythonVersion": "3.10",
+    "pythonPlatform": "Windows",
+    "reportMissingImports": false,
+    "reportMissingModuleSource": false,
+    "typeCheckingMode": "off"
+}

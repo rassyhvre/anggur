@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
+import 'dart:convert';
 import '../providers/deteksi_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/deteksi_result_model.dart' show DeteksiResult, PenangananItem;
@@ -599,6 +600,8 @@ class _ScanScreenState extends State<ScanScreen> {
         confidence: confidence,
         penanganan: deteksiResult.penanganan,
         isHealthy: penyakit.toLowerCase() == 'healthy',
+        healthPercentage: deteksiResult.healthPercentage,
+        gradcamImage: deteksiResult.gradcamImage,
       );
       setState(() => _selectedImage = null);
     } on SocketException catch (e) {
@@ -666,12 +669,14 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  /// Bottom sheet hasil diagnosa dengan penanganan dari database
+  /// Bottom sheet hasil diagnosa dengan penanganan, Grad-CAM, dan health percentage
   void _showDiagnosisSheet({
     required String penyakit,
     required double confidence,
     required List<PenangananItem> penanganan,
     required bool isHealthy,
+    double? healthPercentage,
+    String? gradcamImage,
   }) {
     final iconColor = isHealthy ? const Color(0xFF10B981) : const Color(0xFF0284C7);
     final icon = isHealthy ? Icons.check_circle_rounded : Icons.healing_rounded;
@@ -681,9 +686,9 @@ class _ScanScreenState extends State<ScanScreen> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.55,
+        initialChildSize: 0.65,
         minChildSize: 0.35,
-        maxChildSize: 0.85,
+        maxChildSize: 0.9,
         expand: false,
         builder: (context, scrollController) => Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -716,6 +721,170 @@ class _ScanScreenState extends State<ScanScreen> {
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
               const SizedBox(height: 20),
+
+              // ===== HEALTH PERCENTAGE =====
+              if (healthPercentage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF10B981).withValues(alpha: 0.08),
+                        const Color(0xFF10B981).withValues(alpha: 0.02),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Text('🌿', style: TextStyle(fontSize: 20)),
+                          SizedBox(width: 8),
+                          Text(
+                            'Tingkat Kesehatan Daun',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF065F46)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: healthPercentage / 100,
+                          minHeight: 12,
+                          backgroundColor: Colors.grey[200],
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            healthPercentage >= 70
+                                ? const Color(0xFF22C55E)
+                                : healthPercentage >= 40
+                                    ? const Color(0xFFF59E0B)
+                                    : const Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${healthPercentage.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: healthPercentage >= 70
+                                  ? const Color(0xFF22C55E)
+                                  : healthPercentage >= 40
+                                      ? const Color(0xFFF59E0B)
+                                      : const Color(0xFFEF4444),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: (healthPercentage >= 70
+                                      ? const Color(0xFF22C55E)
+                                      : healthPercentage >= 40
+                                          ? const Color(0xFFF59E0B)
+                                          : const Color(0xFFEF4444))
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              healthPercentage >= 70
+                                  ? 'Sehat'
+                                  : healthPercentage >= 40
+                                      ? 'Perlu Perhatian'
+                                      : 'Kritis',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: healthPercentage >= 70
+                                    ? const Color(0xFF065F46)
+                                    : healthPercentage >= 40
+                                        ? const Color(0xFF92400E)
+                                        : const Color(0xFF991B1B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // ===== GRAD-CAM VISUALIZATION =====
+              if (gradcamImage != null && gradcamImage.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('🔬', style: TextStyle(fontSize: 20)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Visualisasi Grad-CAM',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B)),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Area yang disorot menunjukkan fokus AI dalam mendeteksi penyakit',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.4),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          base64Decode(gradcamImage),
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Color legend
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildLegendItem(const Color(0xFF0000FF), 'Rendah'),
+                          const SizedBox(width: 16),
+                          _buildLegendItem(const Color(0xFF00FF00), 'Sedang'),
+                          const SizedBox(width: 16),
+                          _buildLegendItem(const Color(0xFFFF0000), 'Tinggi'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Penanganan dari database
               if (penanganan.isNotEmpty) ...[
@@ -795,6 +964,25 @@ class _ScanScreenState extends State<ScanScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+      ],
     );
   }
 
